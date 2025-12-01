@@ -6,38 +6,21 @@ interface CandidatesProps {
   selectedIndex: number;
   onSelect: (index: number) => void;
   status: ModelStatus;
-  loadProgress?: number;
-  loadLabel?: string;
 }
 
-const Candidates: React.FC<CandidatesProps> = ({ candidates, selectedIndex, onSelect, status, loadProgress = 0, loadLabel }) => {
+const Candidates: React.FC<CandidatesProps> = ({ candidates, selectedIndex, onSelect, status }) => {
   return (
     <div className="flex-none h-14 bg-white/40 dark:bg-[#0a0a0a] border-y border-black/5 dark:border-white/5 flex items-center relative z-20 backdrop-blur-sm transition-colors duration-500">
       <div className="w-full h-full overflow-x-auto flex items-center px-4 gap-2 no-scrollbar">
         
         {/* Status Handling */}
         {status === 'loading' ? (
-           <div className="flex items-center gap-3 text-slate-400 dark:text-white/30 text-xs font-mono w-full">
+           <div className="flex items-center gap-3 text-slate-400 dark:text-white/30 text-xs font-mono">
               <span className="relative flex h-2 w-2">
                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
                  <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
               </span>
-              <div className="flex-1 flex items-center gap-2">
-                <div className="relative w-full h-1.5 bg-black/5 dark:bg-white/5 rounded-full overflow-hidden">
-                  <div
-                    className="absolute left-0 top-0 h-full bg-cyan-400/70 dark:bg-cyan-300/70 transition-all duration-200"
-                    style={{ width: `${Math.min(100, Math.max(0, loadProgress))}%` }}
-                  />
-                </div>
-                <span className="tracking-wide animate-pulse min-w-[90px] text-right">
-                  {loadProgress >= 99 ? 'Finalizing…' : `${loadProgress}%`}
-                </span>
-                {loadLabel && (
-                  <span className="hidden sm:block text-[11px] text-slate-500 dark:text-white/40 font-mono truncate">
-                    {loadLabel}
-                  </span>
-                )}
-              </div>
+              <span className="tracking-wide animate-pulse">Initializing AI Model...</span>
            </div>
         ) : status === 'inferencing' ? (
            <div className="flex items-center gap-3 text-cyan-600 dark:text-cyan-400 text-xs font-mono">

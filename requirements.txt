@@ -1,7 +1,0 @@
-texteller
-fastapi
-uvicorn
-python-multipart
-pillow
-numpy
-onnxruntime-gpu
