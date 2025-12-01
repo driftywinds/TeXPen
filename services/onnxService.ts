@@ -1,19 +1,28 @@
 import * as ort from 'onnxruntime-web';
 import { ModelConfig } from '../types';
+import { getModelFromCache, storeModelInCache } from './cacheService';
 
 // Set wasm location (handled by vite-plugin-static-copy)
 ort.env.wasm.wasmPaths = '/';
 
 let encoderSession: ort.InferenceSession | null = null;
 let decoderSession: ort.InferenceSession | null = null;
-let tokenizer: any = null;
+interface Tokenizer {
+  model: {
+    vocab: { [token: string]: number };
+    unk_token: string;
+  };
+}
+
+let tokenizer: Tokenizer | null = null;
+let reverseTokenizer: { [id: number]: string } = {};
 
 // Default Config for TexTeller
 export const DEFAULT_CONFIG: ModelConfig = {
   encoderModelUrl: 'https://huggingface.co/OleehyO/TexTeller/resolve/main/encoder_model.onnx',
   decoderModelUrl: 'https://huggingface.co/OleehyO/TexTeller/resolve/main/decoder_model_merged.onnx',
   tokenizerUrl: 'https://huggingface.co/OleehyO/TexTeller/resolve/main/tokenizer.json',
-  imageSize: 224, // Check if 224 or 384
+  imageSize: 384, // TrOCR-based models use 384x384
   encoderInputName: 'pixel_values',
   decoderInputName: 'input_ids',
   decoderOutputName: 'logits',
@@ -31,14 +40,25 @@ export const initModel = async (
   onProgress?: (phase: string, progress: number) => void
 ): Promise<void> => {
   try {
-    // Load Tokenizer
+    // Load Tokenizer from cache or fetch
     if (onProgress) onProgress('Loading Tokenizer', 0);
-    const tokenizerRes = await fetch(config.tokenizerUrl);
-    if (!tokenizerRes.ok) throw new Error('Failed to load tokenizer.json');
-    tokenizer = await tokenizerRes.json();
+    const cachedTokenizer = localStorage.getItem('tokenizer');
+    if (cachedTokenizer) {
+      tokenizer = JSON.parse(cachedTokenizer);
+    } else {
+      const tokenizerRes = await fetch(config.tokenizerUrl);
+      if (!tokenizerRes.ok) throw new Error('Failed to load tokenizer.json');
+      const tokenizerData = await tokenizerRes.json();
+      tokenizer = tokenizerData;
+      localStorage.setItem('tokenizer', JSON.stringify(tokenizerData));
+    }
+    // Create reverse tokenizer map
+    if (Object.keys(reverseTokenizer).length === 0) {
+      reverseTokenizer = Object.fromEntries(Object.entries(tokenizer.model.vocab).map(([key, value]) => [value, key]));
+    }
     if (onProgress) onProgress('Loading Tokenizer', 100);
 
-    // Load Models
+    // Load Models in parallel
     const options: ort.InferenceSession.SessionOptions = {
       executionProviders: [config.preferredProvider, 'wasm'],
       graphOptimizationLevel: 'all'
@@ -46,6 +66,11 @@ export const initModel = async (
 
     // Helper to fetch with progress
     const fetchWithProgress = async (url: string, phase: string) => {
+      const cachedData = await getModelFromCache(url);
+      if (cachedData) {
+        if (onProgress) onProgress(phase, 100);
+        return cachedData;
+      }
       const response = await fetch(url);
       if (!response.ok) throw new Error(`Failed to load ${url}`);
 
@@ -70,18 +95,26 @@ export const initModel = async (
       }
 
       const blob = new Blob(chunks);
-      return new Uint8Array(await blob.arrayBuffer());
+      const data = new Uint8Array(await blob.arrayBuffer());
+      await storeModelInCache(url, data);
+      return data;
     };
 
-    console.log('Loading Encoder...');
-    if (onProgress) onProgress('Loading Encoder', 0);
-    const encoderData = await fetchWithProgress(config.encoderModelUrl, 'Loading Encoder');
-    encoderSession = await ort.InferenceSession.create(encoderData, options);
+    console.log('Loading models...');
+    if (onProgress) onProgress('Loading Models', 0);
 
-    console.log('Loading Decoder...');
-    if (onProgress) onProgress('Loading Decoder', 0);
-    const decoderData = await fetchWithProgress(config.decoderModelUrl, 'Loading Decoder');
-    decoderSession = await ort.InferenceSession.create(decoderData, options);
+    const [encoderData, decoderData] = await Promise.all([
+      fetchWithProgress(config.encoderModelUrl, 'Loading Encoder'),
+      fetchWithProgress(config.decoderModelUrl, 'Loading Decoder')
+    ]);
+
+    const [newEncoderSession, newDecoderSession] = await Promise.all([
+      ort.InferenceSession.create(encoderData, options),
+      ort.InferenceSession.create(decoderData, options)
+    ]);
+
+    encoderSession = newEncoderSession;
+    decoderSession = newDecoderSession;
 
     console.log('Models Loaded!');
     if (onProgress) onProgress('Ready', 100);
@@ -109,7 +142,7 @@ export const runInference = async (
 
   // 3. Decode Loop
   let decoderInputIds = new Int32Array([getVocabId(config.bosToken)]); // Start with BOS
-  let outputTokens: string[] = [];
+  const outputTokens: string[] = [];
 
   const maxSteps = 100; // Safety limit
 
@@ -119,27 +152,16 @@ export const runInference = async (
       'encoder_hidden_states': encoderHiddenStates
     };
 
-    // Note: decoder_model_merged might require past_key_values or use_cache management
-    // For simplicity, we are re-running the full sequence (inefficient but simpler for initial impl)
-    // If using 'decoder_with_past', we need to handle KV cache.
-
     const decoderResults = await decoderSession.run(decoderFeeds);
     const logits = decoderResults[config.decoderOutputName]; // [1, seq_len, vocab_size]
 
     // Get last token logits
-    const [batch, seqLen, vocabSize] = logits.dims;
-    const lastTokenOffset = (seqLen - 1) * vocabSize;
+    const [,, vocabSize] = logits.dims;
+    const lastTokenOffset = (logits.dims[1] - 1) * vocabSize;
     const lastTokenLogits = logits.data.slice(lastTokenOffset, lastTokenOffset + vocabSize) as Float32Array;
 
     // Greedy Search
-    let maxIdx = 0;
-    let maxVal = -Infinity;
-    for (let j = 0; j < vocabSize; j++) {
-      if (lastTokenLogits[j] > maxVal) {
-        maxVal = lastTokenLogits[j];
-        maxIdx = j;
-      }
-    }
+    const maxIdx = lastTokenLogits.reduce((iMax, x, i, arr) => x > arr[iMax] ? i : iMax, 0);
 
     const token = getTokenFromId(maxIdx);
 
@@ -159,10 +181,6 @@ export const runInference = async (
 
 const preprocessImage = (imageData: ImageData, config: ModelConfig): ort.Tensor => {
   const { data, width, height } = imageData;
-  // Resize to config.imageSize if needed (assuming input is already resized or we do it here)
-  // For now, assuming input is close or we just resize simply. 
-  // Better to use a canvas to resize before passing ImageData.
-
   const floatData = new Float32Array(3 * width * height);
 
   // HWC -> CHW and Normalize
@@ -185,22 +203,18 @@ const preprocessImage = (imageData: ImageData, config: ModelConfig): ort.Tensor 
   return new ort.Tensor('float32', floatData, [1, 3, height, width]);
 };
 
-// Tokenizer Helpers (Basic implementation assuming HF tokenizer.json structure)
+// Tokenizer Helpers
 const getVocabId = (token: string): number => {
-  return tokenizer.model.vocab[token] || tokenizer.model.vocab[tokenizer.unk_token] || 0;
+  if (!tokenizer) return 0;
+  return tokenizer.model.vocab[token] || tokenizer.model.vocab[tokenizer.model.unk_token] || 0;
 };
 
 const getTokenFromId = (id: number): string => {
-  // Inefficient reverse lookup, optimize later
-  const vocab = tokenizer.model.vocab;
-  for (const [token, tokenId] of Object.entries(vocab)) {
-    if (tokenId === id) return token;
-  }
-  return '';
+  return reverseTokenizer[id] || '';
 };
 
 const cleanOutput = (text: string): string => {
-  return text.replace(/ /g, ' ').replace(/Ġ/g, ' ').trim(); // Handle BPE artifacts if any
+  return text.replace(/ |Ġ/g, ' ').trim(); // Handle BPE artifacts
 };
 
 export const generateVariations = (base: string): string[] => {

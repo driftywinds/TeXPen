@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { ModelConfig, ModelStatus, Candidate } from '../types';
 import { DEFAULT_CONFIG, initModel, runInference, generateVariations } from '../services/onnxService';
+import { areModelsCached } from '../services/cacheService';
 
 export const useInkModel = (theme: 'dark' | 'light') => {
   const [config, setConfig] = useState<ModelConfig>(DEFAULT_CONFIG);
@@ -9,9 +10,36 @@ export const useInkModel = (theme: 'dark' | 'light') => {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [progress, setProgress] = useState<number>(0);
   const [loadingPhase, setLoadingPhase] = useState<string>('Initializing');
-  const [userConfirmed, setUserConfirmed] = useState<boolean>(false);
+  const [userConfirmed, setUserConfirmedState] = useState<boolean>(
+    () => localStorage.getItem('userConfirmed') === 'true'
+  );
   const isInitializing = useRef(false);
   const isInitialized = useRef(false);
+
+  useEffect(() => {
+    // If user has not confirmed, check if models are already cached
+    if (!userConfirmed) {
+      const checkCache = async () => {
+        const cached = await areModelsCached([
+          DEFAULT_CONFIG.encoderModelUrl,
+          DEFAULT_CONFIG.decoderModelUrl,
+        ]);
+        if (cached) {
+          // If models are in cache, we can skip the user confirmation prompt
+          setUserConfirmedState(true);
+          localStorage.setItem('userConfirmed', 'true');
+        }
+      };
+      checkCache();
+    }
+  }, [userConfirmed]);
+
+  const setUserConfirmed = (value: boolean) => {
+    setUserConfirmedState(value);
+    if (value) {
+      localStorage.setItem('userConfirmed', 'true');
+    }
+  };
 
   // Initialize model on mount or when provider changes
   useEffect(() => {
@@ -38,19 +66,29 @@ export const useInkModel = (theme: 'dark' | 'light') => {
       }
     };
     load();
-  }, [config.preferredProvider, userConfirmed]); // Dependencies for re-initialization
+  }, [config, userConfirmed]); // Dependencies for re-initialization
+
+  const offscreenCanvas = useRef<HTMLCanvasElement | null>(null);
+  const offscreenCtx = useRef<CanvasRenderingContext2D | null>(null);
+
+  // Initialize offscreen canvas
+  useEffect(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = config.imageSize;
+    canvas.height = config.imageSize;
+    offscreenCanvas.current = canvas;
+    offscreenCtx.current = canvas.getContext('2d');
+  }, [config.imageSize]);
+
+  const runConfig = useMemo(() => ({ ...config, invert: theme === 'dark' }), [config, theme]);
 
   const infer = useCallback(async (canvas: HTMLCanvasElement) => {
-    if (status !== 'ready' && status !== 'inferencing') return null;
+    if (status !== 'ready' && status !== 'inferencing' || !offscreenCtx.current) return null;
 
     setStatus('inferencing');
     try {
-      const offscreen = document.createElement('canvas');
-      offscreen.width = config.imageSize;
-      offscreen.height = config.imageSize;
-      const ctx = offscreen.getContext('2d');
-      if (!ctx) throw new Error('Context creation failed');
-
+      const ctx = offscreenCtx.current;
+      
       // Preprocess based on theme (Dark theme = White ink -> needs normalization)
       if (theme === 'dark') {
         ctx.fillStyle = 'black';
@@ -61,8 +99,7 @@ export const useInkModel = (theme: 'dark' | 'light') => {
         ctx.fillRect(0, 0, config.imageSize, config.imageSize);
         ctx.drawImage(canvas, 0, 0, config.imageSize, config.imageSize);
       }
-
-      const runConfig = { ...config, invert: theme === 'dark' };
+      
       const imageData = ctx.getImageData(0, 0, config.imageSize, config.imageSize);
 
       const resultLatex = await runInference(imageData, runConfig);
@@ -79,7 +116,7 @@ export const useInkModel = (theme: 'dark' | 'light') => {
       setStatus('error');
       return null;
     }
-  }, [config, status, theme]);
+  }, [status, theme, config.imageSize, runConfig]);
 
   const clear = useCallback(() => {
     setLatex('');
