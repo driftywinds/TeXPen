@@ -1,14 +1,13 @@
 import React from 'react';
-import { Candidate, ModelStatus } from '../types';
+import { useAppContext } from './contexts/AppContext';
 
-interface CandidatesProps {
-  candidates: Candidate[];
-  selectedIndex: number;
-  onSelect: (index: number) => void;
-  status: ModelStatus;
-}
-
-const Candidates: React.FC<CandidatesProps> = ({ candidates, selectedIndex, onSelect, status }) => {
+const Candidates: React.FC = () => {
+  const {
+    candidates,
+    selectedIndex,
+    selectCandidate,
+    status,
+  } = useAppContext();
   
   // Helper to display clean LaTeX in the candidate buttons
   const sanitizeLatex = (text: string) => {
@@ -57,7 +56,7 @@ const Candidates: React.FC<CandidatesProps> = ({ candidates, selectedIndex, onSe
           candidates.map((cand, idx) => (
             <button
               key={idx}
-              onClick={() => onSelect(idx)}
+              onClick={() => selectCandidate(idx)}
               className={`
                 relative group flex-none h-9 px-4 rounded-md text-sm font-mono transition-all duration-200 border
                 ${selectedIndex === idx 
