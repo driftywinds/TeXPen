@@ -25,7 +25,7 @@ const App: React.FC = () => {
         loadingPhase,
         userConfirmed,
         setUserConfirmed,
-        isLoadedFromCache // Get cache status from hook
+        isLoadedFromCache 
     } = useInkModel(theme);
 
     const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -53,6 +53,11 @@ const App: React.FC = () => {
         setLatex(candidates[idx].latex);
     };
 
+    // --- New Handler for Deletion ---
+    const handleDeleteHistory = (id: string) => {
+        setHistory(prev => prev.filter(item => item.id !== id));
+    };
+
     return (
         <div className="relative h-screen w-screen overflow-hidden font-sans bg-[#fafafa] dark:bg-black transition-colors duration-500">
             <LiquidBackground />
@@ -73,6 +78,7 @@ const App: React.FC = () => {
                     <HistorySidebar
                         history={history}
                         onSelect={handleLoadFromHistory}
+                        onDelete={handleDeleteHistory} /* Pass the delete handler here */
                         isOpen={isSidebarOpen}
                     />
 
@@ -104,7 +110,7 @@ const App: React.FC = () => {
                     error={status === 'error' ? 'Failed to load models. Please check your internet connection and try again.' : undefined}
                     needsConfirmation={!userConfirmed}
                     onConfirm={() => setUserConfirmed(true)}
-                    isLoadedFromCache={isLoadedFromCache} // Pass prop here
+                    isLoadedFromCache={isLoadedFromCache}
                 />
             )}
         </div>
