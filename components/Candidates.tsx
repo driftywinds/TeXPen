@@ -9,6 +9,19 @@ interface CandidatesProps {
 }
 
 const Candidates: React.FC<CandidatesProps> = ({ candidates, selectedIndex, onSelect, status }) => {
+  
+  // Helper to display clean LaTeX in the candidate buttons
+  const sanitizeLatex = (text: string) => {
+    return text
+      .replace(/\\\[/g, '')
+      .replace(/\\\]/g, '')
+      .replace(/\\\(/g, '')
+      .replace(/\\\)/g, '')
+      .replace(/\$\$/g, '')
+      .replace(/^\$|\$$/g, '')
+      .trim();
+  };
+
   return (
     <div className="flex-none h-14 bg-white/40 dark:bg-[#0a0a0a] border-y border-black/5 dark:border-white/5 flex items-center relative z-20 backdrop-blur-sm transition-colors duration-500">
       <div className="w-full h-full overflow-x-auto flex items-center px-4 gap-2 no-scrollbar">
@@ -53,7 +66,9 @@ const Candidates: React.FC<CandidatesProps> = ({ candidates, selectedIndex, onSe
                 }
               `}
             >
-              <span className="relative z-10">{cand.latex}</span>
+              {/* Sanitize the candidate text here as well */}
+              <span className="relative z-10">{sanitizeLatex(cand.latex)}</span>
+              
               {/* Active Indicator Dot */}
               {selectedIndex === idx && (
                 <span className="absolute -bottom-px left-1/2 -translate-x-1/2 w-4 h-px bg-cyan-500 dark:bg-cyan-400 shadow-[0_0_8px_cyan]"></span>

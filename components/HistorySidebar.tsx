@@ -12,6 +12,18 @@ const HistorySidebar: React.FC<HistorySidebarProps> = ({ history, onSelect, isOp
   // Trigger MathJax when history updates
   useMathJax(history, undefined, 'history-math');
 
+  // Helper to strip delimiters so we don't double-wrap math
+  const sanitizeLatex = (text: string) => {
+    return text
+      .replace(/\\\[/g, '')
+      .replace(/\\\]/g, '')
+      .replace(/\\\(/g, '')
+      .replace(/\\\)/g, '')
+      .replace(/\$\$/g, '')
+      .replace(/^\$|\$$/g, '')
+      .trim();
+  };
+
   return (
     <div 
         className={`flex-none border-r border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-black/20 overflow-hidden transition-all duration-300 ease-in-out ${isOpen ? 'w-64 opacity-100' : 'w-0 opacity-0 border-r-0'}`}
@@ -33,8 +45,9 @@ const HistorySidebar: React.FC<HistorySidebarProps> = ({ history, onSelect, isOp
                           onClick={() => onSelect(item)}
                           className="w-full text-left p-3 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 border border-transparent hover:border-black/5 dark:hover:border-white/10 transition-all group relative overflow-hidden"
                       >
+                          {/* Apply sanitization here so we get clean \( x \) instead of \( \[ x \] \) */}
                           <div className="history-math text-slate-700 dark:text-white/80 text-sm truncate opacity-70 group-hover:opacity-100 h-6">
-                              {`\\( ${item.latex} \\)`}
+                              {`\\( ${sanitizeLatex(item.latex)} \\)`}
                           </div>
                           <div className="mt-1 flex justify-between items-center">
                               <span className="text-[10px] text-slate-400 dark:text-white/30 font-mono">
