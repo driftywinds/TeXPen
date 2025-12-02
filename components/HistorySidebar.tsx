@@ -5,11 +5,10 @@ import { useMathJax } from '../hooks/useMathJax';
 interface HistorySidebarProps {
   history: HistoryItem[];
   onSelect: (item: HistoryItem) => void;
-  onDelete: (id: string) => void; // <--- 1. New Prop
+  onDelete: (id: string) => void;
   isOpen: boolean;
 }
 
-// Simple SVG Icons to avoid external dependencies
 const TrashIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
 );
@@ -21,7 +20,6 @@ const XIcon = () => (
 );
 
 const HistorySidebar: React.FC<HistorySidebarProps> = ({ history, onSelect, onDelete, isOpen }) => {
-  // 2. Track which item ID is currently pending deletion
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // Trigger MathJax when history updates
@@ -38,9 +36,8 @@ const HistorySidebar: React.FC<HistorySidebarProps> = ({ history, onSelect, onDe
       .trim();
   };
 
-  // Handlers
   const handleDeleteClick = (e: MouseEvent, id: string) => {
-    e.stopPropagation(); // Prevent triggering onSelect
+    e.stopPropagation(); 
     setConfirmDeleteId(id);
   };
 
@@ -76,12 +73,12 @@ const HistorySidebar: React.FC<HistorySidebarProps> = ({ history, onSelect, onDe
 
                       return (
                         <div key={item.id} className="relative group rounded-lg overflow-hidden">
-                          {/* Normal Item View */}
                           <button 
                               onClick={() => onSelect(item)}
                               className="w-full text-left p-3 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 border border-transparent hover:border-black/5 dark:hover:border-white/10 transition-all"
                           >
-                              <div className="history-math text-slate-700 dark:text-white/80 text-sm truncate opacity-70 group-hover:opacity-100 h-6 pr-6">
+                              {/* Removed pr-6 since icon is now at bottom */}
+                              <div className="history-math text-slate-700 dark:text-white/80 text-sm truncate opacity-70 group-hover:opacity-100 h-6">
                                   {`\\( ${sanitizeLatex(item.latex)} \\)`}
                               </div>
                               <div className="mt-1 flex justify-between items-center">
@@ -91,11 +88,11 @@ const HistorySidebar: React.FC<HistorySidebarProps> = ({ history, onSelect, onDe
                               </div>
                           </button>
 
-                          {/* Trash Icon (Visible on Hover, Hidden if confirming) */}
+                          {/* Trash Icon - Moved to Bottom Right */}
                           {!isConfirming && (
                             <button
                               onClick={(e) => handleDeleteClick(e, item.id)}
-                              className="absolute top-2 right-2 p-1.5 rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 opacity-0 group-hover:opacity-100 transition-all duration-200"
+                              className="absolute bottom-2 right-2 p-1.5 rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10"
                               title="Delete item"
                             >
                               <TrashIcon />
@@ -104,7 +101,7 @@ const HistorySidebar: React.FC<HistorySidebarProps> = ({ history, onSelect, onDe
 
                           {/* Confirmation Overlay */}
                           {isConfirming && (
-                             <div className="absolute inset-0 bg-red-50 dark:bg-red-900/90 backdrop-blur-sm z-10 flex items-center justify-between px-3 animate-in fade-in duration-200">
+                             <div className="absolute inset-0 bg-red-50 dark:bg-red-900/90 backdrop-blur-sm z-20 flex items-center justify-between px-3 animate-in fade-in duration-200">
                                 <span className="text-xs font-semibold text-red-600 dark:text-red-200">Delete?</span>
                                 <div className="flex gap-1">
                                     <button 
