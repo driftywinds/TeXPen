@@ -14,16 +14,17 @@ const OutputDisplay: React.FC<OutputDisplayProps> = ({ latex }) => {
   };
 
   const sanitizeLatex = (text: string) => {
-    // 1. Trim whitespace first so the regex anchors (^ and $) match correctly
-    let clean = text.trim();
+    if (!text) return '';
 
-    // 2. Replace using [\s\S]* to match content even if it has newlines
-    //    We check the most specific delimiters (\[...\] and $$...$$) first.
-    clean = clean
-      .replace(/^\\\[([\s\S]*)\\\]$/, '$1') // Matches \[ ... \]
-      .replace(/^\$\$([\s\S]*)\$\$$/, '$1') // Matches $$ ... $$
-      .replace(/^\\\(([\s\S]*)\\\)$/, '$1') // Matches \( ... \)
-      .replace(/^\$([\s\S]*)\$$/, '$1');    // Matches $ ... $
+    // Remove all instances of delimiters globally.
+    // We use the 'g' flag to catch them anywhere in the string.
+    let clean = text
+      .replace(/\\\[/g, '')  // Remove \[
+      .replace(/\\\]/g, '')  // Remove \]
+      .replace(/\\\(/g, '')  // Remove \(
+      .replace(/\\\)/g, '')  // Remove \)
+      .replace(/\$\$/g, '')  // Remove $$
+      .replace(/^\$|\$$/g, ''); // Remove single $ at start or end
 
     return clean.trim();
   };
@@ -31,10 +32,11 @@ const OutputDisplay: React.FC<OutputDisplayProps> = ({ latex }) => {
   return (
     <div className="h-[30%] md:h-[35%] relative flex flex-col items-center justify-center bg-gradient-to-b from-white/[0.2] dark:from-white/[0.02] to-transparent z-10">
         <div id="latex-output" className="w-full text-center text-2xl md:text-5xl text-slate-800 dark:text-white px-8 py-4 overflow-x-auto overflow-y-hidden scrollbar-hide">
+            {/* The component adds the outer delimiters here, so sanitizeLatex must ensure the inside is clean */}
             {latex ? `\\[${sanitizeLatex(latex)}\\]` : <span className="text-slate-300 dark:text-white/10 font-light italic text-xl">Equation preview...</span>}
         </div>
         
-        {/* Action Bar overlay */}
+        {/* ... existing Action Bar code ... */}
         <div className="absolute top-4 right-4 flex gap-2">
             <button 
             onClick={handleCopy}
