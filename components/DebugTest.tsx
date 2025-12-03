@@ -2,7 +2,7 @@ import React from 'react';
 import { useAppContext } from './contexts/AppContext';
 
 // UPDATE THIS LINE:
-const TEST_IMAGE_URL = "/test.png"; 
+const TEST_IMAGE_URL = "/test.png";
 
 const DebugTest: React.FC = () => {
     const { inferFromUrl, status } = useAppContext();
@@ -13,15 +13,15 @@ const DebugTest: React.FC = () => {
                 <div className="flex flex-col gap-2">
                     <button
                         onClick={() => inferFromUrl(TEST_IMAGE_URL)}
-                        disabled={status !== 'ready'}
+                        disabled={status === 'loading' || status === 'error'}
                         className={`
                             px-3 py-2 rounded font-bold transition-all
-                            ${status === 'ready' 
-                                ? 'bg-blue-600 hover:bg-blue-500 text-white' 
+                            ${status !== 'loading' && status !== 'error'
+                                ? 'bg-blue-600 hover:bg-blue-500 text-white'
                                 : 'bg-gray-700 text-gray-400 cursor-not-allowed'}
                         `}
                     >
-                        {status === 'inferencing' ? 'Testing...' : 'Test Reference Image'}
+                        {status === 'loading' ? 'Testing...' : 'Test Reference Image'}
                     </button>
                     <p className="text-[10px] text-gray-500">
                         Check console (F12) for raw output.

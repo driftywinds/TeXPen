@@ -15,11 +15,7 @@ interface AppContextType {
     infer: (canvas: HTMLCanvasElement) => Promise<{ latex: string; candidates: Candidate[] } | null>;
     inferFromUrl: (url: string) => Promise<void>;
     clearModel: () => void;
-    progress: number;
     loadingPhase: string;
-    userConfirmed: boolean;
-    setUserConfirmed: (confirmed: boolean) => void;
-    isLoadedFromCache: boolean;
 
     // Sidebar
     isSidebarOpen: boolean;
@@ -50,11 +46,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         infer,
         inferFromUrl,
         clear: clearModel,
-        progress,
         loadingPhase,
-        userConfirmed,
-        setUserConfirmed,
-        isLoadedFromCache
     } = useInkModel(theme);
 
     const [selectedIndex, setSelectedIndex] = useState<number>(0);
@@ -85,11 +77,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         infer,
         inferFromUrl,
         clearModel,
-        progress,
         loadingPhase,
-        userConfirmed,
-        setUserConfirmed,
-        isLoadedFromCache,
 
         // Sidebar
         isSidebarOpen,

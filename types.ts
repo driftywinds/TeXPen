@@ -5,6 +5,7 @@ export interface ModelConfig {
   encoderModelUrl: string;
   decoderModelUrl: string;
   tokenizerUrl: string;
+  preprocessorConfigUrl?: string;
   imageSize: number;
   encoderInputName: string;
   decoderInputName: string;
