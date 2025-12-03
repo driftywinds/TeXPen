@@ -35,8 +35,23 @@ const SPLITTING = [
 
 // Compiled regexes
 const SPLITTING_STRING = `(${SPLITTING.join('|')})`;
+const RE_SPLITTING = new RegExp(SPLITTING_STRING);
+const RE_SPLITTING_SHARED_LINE = new RegExp(`.*${SPLITTING_STRING}.*`);
+const RE_SPLITTING_SHARED_LINE_CAPTURE = new RegExp(`(?<prev>.*?)(?<env>${SPLITTING_STRING}.*)`);
+
 const RE_NEWLINES = new RegExp(`${LINE_END}${LINE_END}(${LINE_END})+`, 'g');
 const RE_TRAIL = new RegExp(` +${LINE_END}`, 'g'); // Note: JS RegExp for multiline might need flags
+
+export interface Args {
+  tabchar: string;
+  tabsize: number;
+  wrap: boolean;
+  wraplen: number;
+  wrapmin: number;
+  lists: string[];
+  verbosity: number;
+}
+
 export const DEFAULT_ARGS: Args = {
   tabchar: " ",
   tabsize: 4,
