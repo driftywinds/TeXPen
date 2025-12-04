@@ -1,1 +1,3 @@
 - [ ] fix light mode
+- [ ] fix inference
+- [ ] add image upload tab

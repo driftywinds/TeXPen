@@ -3,7 +3,7 @@ import { ModelConfig, Candidate } from '../types';
 import { inferenceService } from '../services/inference/InferenceService';
 
 export function useInkModel(theme: 'light' | 'dark', quantization: string, provider: 'webgpu' | 'wasm' | 'webgl') {
-  const [numCandidates, setNumCandidates] = useState<number>(5);
+  const [numCandidates, setNumCandidates] = useState<number>(1);
   const [config, setConfig] = useState<ModelConfig>({
     encoderModelUrl: 'onnx-community/TexTeller3-ONNX',
     decoderModelUrl: 'onnx-community/TexTeller3-ONNX',
