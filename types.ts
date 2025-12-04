@@ -35,8 +35,12 @@ export type ModelStatus = 'loading' | 'ready' | 'error' | 'inferencing';
 // Extend Window for MathJax and ONNX
 declare global {
   interface Window {
-    MathJax: {
+    MathJax?: {
+      tex: { inlineMath: string[][] };
+      svg: { fontCache: string };
+      startup: { typeset: boolean };
       typesetPromise: (nodes?: Element[]) => Promise<void>;
+      tex2chtml: (tex: string) => HTMLElement;
     };
     ort: {
       env: {

@@ -3,6 +3,7 @@ import { ModelConfig, Candidate } from '../types';
 import { inferenceService } from '../services/inferenceService';
 
 export function useInkModel(theme: 'light' | 'dark') {
+  const [numCandidates, setNumCandidates] = useState<number>(5);
   const [config, setConfig] = useState<ModelConfig>({
     encoderModelUrl: 'onnx-community/TexTeller3-ONNX',
     decoderModelUrl: 'onnx-community/TexTeller3-ONNX',
@@ -57,13 +58,20 @@ export function useInkModel(theme: 'light' | 'dark') {
           return reject(new Error('Failed to create blob from canvas'));
         }
         try {
-          const res = await inferenceService.infer(blob);
+          const res = await inferenceService.infer(blob, numCandidates);
           if (res) {
             setLatex(res.latex);
             setDebugImage(res.debugImage);
-            setCandidates([{ id: 0, latex: res.latex }]);
+
+            // Map string candidates to Candidate objects
+            const newCandidates = res.candidates.map((latex, index) => ({
+              id: index,
+              latex: latex
+            }));
+
+            setCandidates(newCandidates);
             setStatus('success');
-            resolve({ latex: res.latex, candidates: [{ id: 0, latex: res.latex }] });
+            resolve({ latex: res.latex, candidates: newCandidates });
           } else {
             setStatus('idle');
             resolve(null);
@@ -128,6 +136,8 @@ export function useInkModel(theme: 'light' | 'dark') {
     clear,
     isInferencing,
     loadingPhase,
-    debugImage
+    debugImage,
+    numCandidates,
+    setNumCandidates
   };
 }

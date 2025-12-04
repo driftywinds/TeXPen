@@ -18,6 +18,8 @@ interface AppContextType {
     loadingPhase: string;
     isInferencing: boolean;
     debugImage: string | null;
+    numCandidates: number;
+    setNumCandidates: (n: number) => void;
 
     // Sidebar
     isSidebarOpen: boolean;
@@ -51,6 +53,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         loadingPhase,
         isInferencing,
         debugImage,
+        numCandidates,
+        setNumCandidates,
     } = useInkModel(theme);
 
     const [selectedIndex, setSelectedIndex] = useState<number>(0);
@@ -84,6 +88,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         loadingPhase,
         isInferencing,
         debugImage,
+        numCandidates,
+        setNumCandidates,
 
         // Sidebar
         isSidebarOpen,

@@ -34,6 +34,8 @@ const Main: React.FC = () => {
         selectCandidate,
         isInferencing,
         debugImage,
+        numCandidates,
+        setNumCandidates,
     } = useAppContext();
 
     const { theme, toggleTheme } = useThemeContext();
@@ -62,6 +64,8 @@ const Main: React.FC = () => {
                     setConfig={setConfig}
                     isSidebarOpen={isSidebarOpen}
                     toggleSidebar={toggleSidebar}
+                    numCandidates={numCandidates}
+                    setNumCandidates={setNumCandidates}
                 />
 
                 <div className="flex-1 flex min-h-0 relative">

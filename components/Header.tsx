@@ -8,6 +8,8 @@ interface HeaderProps {
     setConfig: (config: ModelConfig) => void;
     isSidebarOpen: boolean;
     toggleSidebar: () => void;
+    numCandidates: number;
+    setNumCandidates: (n: number) => void;
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -17,6 +19,8 @@ const Header: React.FC<HeaderProps> = ({
     setConfig,
     isSidebarOpen,
     toggleSidebar,
+    numCandidates,
+    setNumCandidates,
 }) => {
     const [showInfo, setShowInfo] = useState(false);
 
@@ -50,6 +54,43 @@ const Header: React.FC<HeaderProps> = ({
 
             {/* Right: Controls */}
             <div className="flex items-center gap-4">
+
+                {/* Candidate Count Group */}
+                <div className="hidden md:flex items-center p-1 bg-black/5 dark:bg-white/5 rounded-xl border border-black/5 dark:border-white/5">
+                    <div className="flex items-center gap-2 px-2">
+                        <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-white/40">Candidates</span>
+                        <input
+                            type="number"
+                            min="1"
+                            max="5"
+                            value={numCandidates}
+                            onChange={(e) => {
+                                const val = parseInt(e.target.value);
+                                if (!isNaN(val)) {
+                                    setNumCandidates(Math.min(5, Math.max(1, val)));
+                                }
+                            }}
+                            className="w-10 h-6 text-center text-xs font-mono bg-white dark:bg-white/10 rounded-md border border-black/10 dark:border-white/10 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 text-slate-700 dark:text-white"
+                        />
+
+                        <div className="relative group/info">
+                            <svg className="w-3.5 h-3.5 text-slate-400 dark:text-white/30 cursor-help hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+
+                            {/* Tooltip */}
+                            <div className="absolute top-full right-0 mt-2 w-48 p-2 bg-white dark:bg-[#111] border border-black/10 dark:border-white/10 rounded-lg shadow-xl backdrop-blur-xl z-50 opacity-0 invisible group-hover/info:opacity-100 group-hover/info:visible transition-all duration-200 text-left pointer-events-none">
+                                <p className="text-[10px] text-slate-500 dark:text-white/60 leading-tight">
+                                    <span className="font-bold text-cyan-600 dark:text-cyan-400">1 Candidate:</span> Fast (Greedy)<br />
+                                    <span className="font-bold text-purple-600 dark:text-purple-400">2-5 Candidates:</span> Slower (Beam Search)
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Separator */}
+                <div className="hidden md:block w-px h-6 bg-black/5 dark:bg-white/5"></div>
 
                 {/* Runtime Group */}
                 <div className="hidden md:flex items-center p-1 bg-black/5 dark:bg-white/5 rounded-xl border border-black/5 dark:border-white/5">
