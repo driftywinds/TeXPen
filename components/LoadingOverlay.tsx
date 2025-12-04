@@ -40,7 +40,7 @@ const LoadingOverlay: React.FC = () => {
                                 Loading AI Model
                             </h2>
                             <p className="text-gray-500 dark:text-gray-500 text-xs mt-2">
-                                Communicating with TexTeller server...
+                                Loading models...
                             </p>
                         </>
                     )}

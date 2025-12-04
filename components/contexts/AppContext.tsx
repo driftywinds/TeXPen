@@ -17,6 +17,7 @@ interface AppContextType {
     clearModel: () => void;
     loadingPhase: string;
     isInferencing: boolean;
+    debugImage: string | null;
 
     // Sidebar
     isSidebarOpen: boolean;
@@ -49,6 +50,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clear: clearModel,
         loadingPhase,
         isInferencing,
+        debugImage,
     } = useInkModel(theme);
 
     const [selectedIndex, setSelectedIndex] = useState<number>(0);
@@ -81,6 +83,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clearModel,
         loadingPhase,
         isInferencing,
+        debugImage,
 
         // Sidebar
         isSidebarOpen,

@@ -43,13 +43,13 @@ export class InferenceService {
     }
   }
 
-  public async infer(imageBlob: Blob): Promise<string> {
+  public async infer(imageBlob: Blob): Promise<{ latex: string; debugImage: string }> {
     if (!this.model || !this.tokenizer) {
       await this.init();
     }
 
     // 1. Preprocess
-    const pixelValues = await this.preprocess(imageBlob);
+    const { tensor: pixelValues, debugImage } = await this.preprocess(imageBlob);
 
     // 2. Generate
     const outputTokenIds = await this.model!.generate({
@@ -72,7 +72,10 @@ export class InferenceService {
     console.log('[DEBUG] Output token IDs:', outputTokenIds[0]);
 
     // 4. Post-process
-    return this.postprocess(generatedText);
+    return {
+      latex: this.postprocess(generatedText),
+      debugImage
+    };
   }
 
 
@@ -101,6 +104,10 @@ export class InferenceService {
     // transformers.js expects [batch_size, channels, height, width]
     // We need to flatten it to [1, 1, 448, 448] (grayscale)
 
+    // DEBUG: Log the preprocessed image
+    const debugImage = canvas.toDataURL();
+    // console.log('[DEBUG] Preprocessed Input Image:', debugImage);
+
     const float32Data = new Float32Array(FIXED_IMG_SIZE * FIXED_IMG_SIZE);
     const { data } = processedData;
 
@@ -123,11 +130,14 @@ export class InferenceService {
       sumVal += normalized;
     }
 
-    return new Tensor(
-      'float32',
-      float32Data,
-      [1, 1, FIXED_IMG_SIZE, FIXED_IMG_SIZE]
-    );
+    return {
+      tensor: new Tensor(
+        'float32',
+        float32Data,
+        [1, 1, FIXED_IMG_SIZE, FIXED_IMG_SIZE]
+      ),
+      debugImage
+    };
   }
 
   private trimWhiteBorder(imageData: ImageData): ImageData {

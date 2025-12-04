@@ -25,6 +25,7 @@ export function useInkModel(theme: 'light' | 'dark') {
   const [status, setStatus] = useState<string>('idle'); // idle, loading, error, success
   const [isInferencing, setIsInferencing] = useState<boolean>(false);
   const [loadingPhase, setLoadingPhase] = useState<string>('');
+  const [debugImage, setDebugImage] = useState<string | null>(null);
 
   // Initialize model on mount
   useEffect(() => {
@@ -58,10 +59,11 @@ export function useInkModel(theme: 'light' | 'dark') {
         try {
           const res = await inferenceService.infer(blob);
           if (res) {
-            setLatex(res);
-            setCandidates([{ id: 0, latex: res }]);
+            setLatex(res.latex);
+            setDebugImage(res.debugImage);
+            setCandidates([{ id: 0, latex: res.latex }]);
             setStatus('success');
-            resolve({ latex: res, candidates: [{ id: 0, latex: res }] });
+            resolve({ latex: res.latex, candidates: [{ id: 0, latex: res.latex }] });
           } else {
             setStatus('idle');
             resolve(null);
@@ -110,6 +112,7 @@ export function useInkModel(theme: 'light' | 'dark') {
   const clear = useCallback(() => {
     setLatex('');
     setCandidates([]);
+    setDebugImage(null);
     setStatus('idle');
   }, []);
 
@@ -124,6 +127,7 @@ export function useInkModel(theme: 'light' | 'dark') {
     inferFromUrl,
     clear,
     isInferencing,
-    loadingPhase
+    loadingPhase,
+    debugImage
   };
 }
