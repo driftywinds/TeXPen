@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { ModelConfig, Candidate } from '../types';
 import { inferenceService } from '../services/inference/InferenceService';
 
-export function useInkModel(theme: 'light' | 'dark') {
+export function useInkModel(theme: 'light' | 'dark', quantization: string, provider: 'webgpu' | 'wasm' | 'webgl') {
   const [numCandidates, setNumCandidates] = useState<number>(5);
   const [config, setConfig] = useState<ModelConfig>({
     encoderModelUrl: 'onnx-community/TexTeller3-ONNX',
@@ -18,7 +18,7 @@ export function useInkModel(theme: 'light' | 'dark') {
     eosToken: '</s>',
     bosToken: '<s>',
     padToken: '<pad>',
-    preferredProvider: 'webgpu'
+    preferredProvider: 'webgpu',
   });
 
   const [latex, setLatex] = useState<string>('');
@@ -34,7 +34,7 @@ export function useInkModel(theme: 'light' | 'dark') {
       try {
         setStatus('loading');
         setLoadingPhase('Initializing model...');
-        await inferenceService.init((phase) => setLoadingPhase(phase));
+        await inferenceService.init((phase) => setLoadingPhase(phase), { dtype: quantization, device: provider });
         setStatus('idle');
         setLoadingPhase('');
       } catch (error) {
@@ -44,7 +44,7 @@ export function useInkModel(theme: 'light' | 'dark') {
       }
     };
     initModel();
-  }, []);
+  }, [quantization, provider]);
 
   const infer = useCallback(async (canvas: HTMLCanvasElement) => {
     setIsInferencing(true);
@@ -85,7 +85,7 @@ export function useInkModel(theme: 'light' | 'dark') {
         }
       }, 'image/png');
     });
-  }, []);
+  }, [numCandidates]);
 
   const inferFromUrl = useCallback(async (url: string) => {
     try {
@@ -138,6 +138,6 @@ export function useInkModel(theme: 'light' | 'dark') {
     loadingPhase,
     debugImage,
     numCandidates,
-    setNumCandidates
+    setNumCandidates,
   };
 }

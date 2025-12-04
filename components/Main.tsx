@@ -9,18 +9,13 @@ import OutputDisplay from './OutputDisplay';
 import Candidates from './Candidates';
 import CanvasArea from './CanvasArea';
 import LoadingOverlay from './LoadingOverlay';
-import DebugTest from './DebugTest';
-import VisualDebugger from './VisualDebugger';
 
 const Main: React.FC = () => {
     const {
-        config,
-        setConfig,
         status,
         latex,
         candidates,
         infer,
-        inferFromUrl,
         clearModel,
         progress,
         loadingPhase,
@@ -29,16 +24,12 @@ const Main: React.FC = () => {
         isLoadedFromCache,
         loadFromHistory,
         isSidebarOpen,
-        toggleSidebar,
         selectedIndex,
         selectCandidate,
         isInferencing,
-        debugImage,
-        numCandidates,
-        setNumCandidates,
     } = useAppContext();
 
-    const { theme, toggleTheme } = useThemeContext();
+    const { theme } = useThemeContext();
     const { history, addToHistory, deleteHistoryItem } = useHistoryContext();
 
     const handleInference = async (canvas: HTMLCanvasElement) => {
@@ -57,16 +48,7 @@ const Main: React.FC = () => {
             <LiquidBackground />
 
             <div className="flex flex-col w-full h-full bg-white/60 dark:bg-[#0c0c0c]/80 backdrop-blur-md transition-colors duration-500">
-                <Header
-                    theme={theme}
-                    toggleTheme={toggleTheme}
-                    config={config}
-                    setConfig={setConfig}
-                    isSidebarOpen={isSidebarOpen}
-                    toggleSidebar={toggleSidebar}
-                    numCandidates={numCandidates}
-                    setNumCandidates={setNumCandidates}
-                />
+                <Header />
 
                 <div className="flex-1 flex min-h-0 relative">
                     <HistorySidebar

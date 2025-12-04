@@ -1,8 +1,10 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ModelConfig, Candidate, HistoryItem } from '../../types';
 import { useInkModel } from '../../hooks/useInkModel';
 import { useThemeContext } from './ThemeContext';
-import { useHistoryContext } from './HistoryContext';
+import { isWebGPUAvailable } from '../../utils/env';
+
+type Provider = 'webgpu' | 'wasm' | 'webgl';
 
 interface AppContextType {
     // InkModel
@@ -20,6 +22,10 @@ interface AppContextType {
     debugImage: string | null;
     numCandidates: number;
     setNumCandidates: (n: number) => void;
+    quantization: string;
+    setQuantization: (q: string) => void;
+    provider: Provider;
+    setProvider: (p: Provider) => void;
 
     // Sidebar
     isSidebarOpen: boolean;
@@ -38,7 +44,16 @@ export const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { theme } = useThemeContext();
-    // We don't need history here for the model, but we need it for loadFromHistory
+    const [quantization, setQuantization] = useState<string>('fp16');
+    const [provider, setProvider] = useState<Provider>('wasm');
+
+    useEffect(() => {
+        isWebGPUAvailable().then(available => {
+            if (available) {
+                setProvider('webgpu');
+            }
+        });
+    }, []);
 
     const {
         config,
@@ -55,7 +70,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         debugImage,
         numCandidates,
         setNumCandidates,
-    } = useInkModel(theme);
+    } = useInkModel(theme, quantization, provider);
 
     const [selectedIndex, setSelectedIndex] = useState<number>(0);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -90,6 +105,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         debugImage,
         numCandidates,
         setNumCandidates,
+        quantization,
+        setQuantization,
+        provider,
+        setProvider,
 
         // Sidebar
         isSidebarOpen,

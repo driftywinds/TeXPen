@@ -2,6 +2,7 @@ import { AutoTokenizer, AutoModelForVision2Seq, PreTrainedModel, PreTrainedToken
 import { removeStyle, addNewlines } from '../latexUtils';
 import { preprocess } from './imagePreprocessing';
 import { beamSearch } from './beamSearch';
+import { isWebGPUAvailable } from '../../utils/env';
 
 // Constants
 const MODEL_ID = 'onnx-community/TexTeller3-ONNX';
@@ -20,18 +21,30 @@ export class InferenceService {
     return InferenceService.instance;
   }
 
-  public async init(onProgress?: (status: string) => void, options: { device?: string; dtype?: string } = {}): Promise<void> {
-    if (this.model && this.tokenizer) return;
+  public async init(onProgress?: (status: string) => void, options: { dtype?: string, device?: 'webgpu' | 'wasm' | 'webgl' } = {}): Promise<void> {
+    if (this.model && this.tokenizer) {
+        // If the model is already loaded, but the quantization or device is different, we need to dispose and reload.
+        if ((options.dtype && (this.model as any).config.dtype !== options.dtype) ||
+            (options.device && (this.model as any).config.device !== options.device)) {
+            await this.dispose();
+        } else {
+            return;
+        }
+    }
 
     try {
       if (onProgress) onProgress('Loading tokenizer...');
       this.tokenizer = await AutoTokenizer.from_pretrained(MODEL_ID);
 
-      if (onProgress) onProgress('Loading model... (this may take a while)');
-      // Force browser cache usage and allow remote models
+      const webgpuAvailable = await isWebGPUAvailable();
+      const device = options.device || (webgpuAvailable ? 'webgpu' : 'wasm');
+      const dtype = options.dtype || (webgpuAvailable ? 'fp16' : 'q8');
+
+      if (onProgress) onProgress(`Loading model with ${device} (${dtype})... (this may take a while)`);
+      
       this.model = await AutoModelForVision2Seq.from_pretrained(MODEL_ID, {
-        device: options.device || 'webgpu', // Try WebGPU first, fallback to wasm automatically
-        dtype: options.dtype || 'fp32',    // Use fp32 for unquantized model as requested
+        device: device,
+        dtype: dtype,
       } as any);
 
       if (onProgress) onProgress('Ready');

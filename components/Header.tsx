@@ -1,28 +1,21 @@
-import React, { useState } from 'react';
-import { ModelConfig } from '../types';
+import React from 'react';
+import { useAppContext } from './contexts/AppContext';
+import { useThemeContext } from './contexts/ThemeContext';
+import { QuantizationSelector } from './QuantizationSelector';
+import { ProviderSelector } from './ProviderSelector';
 
-interface HeaderProps {
-    theme: 'dark' | 'light';
-    toggleTheme: () => void;
-    config: ModelConfig;
-    setConfig: (config: ModelConfig) => void;
-    isSidebarOpen: boolean;
-    toggleSidebar: () => void;
-    numCandidates: number;
-    setNumCandidates: (n: number) => void;
-}
-
-const Header: React.FC<HeaderProps> = ({
-    theme,
-    toggleTheme,
-    config,
-    setConfig,
-    isSidebarOpen,
-    toggleSidebar,
-    numCandidates,
-    setNumCandidates,
-}) => {
-    const [showInfo, setShowInfo] = useState(false);
+const Header: React.FC = () => {
+    const {
+        isSidebarOpen,
+        toggleSidebar,
+        numCandidates,
+        setNumCandidates,
+        quantization,
+        setQuantization,
+        provider,
+        setProvider,
+    } = useAppContext();
+    const { theme, toggleTheme } = useThemeContext();
 
     return (
         <div className="h-14 flex-none flex items-center justify-between px-4 border-b border-black/5 dark:border-white/5 bg-white/40 dark:bg-black/20 select-none z-30 backdrop-blur-md">
@@ -92,52 +85,30 @@ const Header: React.FC<HeaderProps> = ({
                 {/* Separator */}
                 <div className="hidden md:block w-px h-6 bg-black/5 dark:bg-white/5"></div>
 
-                {/* Runtime Group */}
+                {/* Provider Group */}
                 <div className="hidden md:flex items-center p-1 bg-black/5 dark:bg-white/5 rounded-xl border border-black/5 dark:border-white/5">
-                    <div className="flex items-center">
-                        {(['wasm', 'webgl', 'webgpu'] as const).map((p) => (
-                            <button
-                                key={p}
-                                onClick={() => setConfig({ ...config, preferredProvider: p })}
-                                className={`px-3 py-1 text-[10px] font-bold uppercase rounded-[8px] transition-all ${config.preferredProvider === p ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 dark:text-white/30 hover:text-slate-600 dark:hover:text-white/50'}`}
-                            >
-                                {p}
-                            </button>
-                        ))}
+                    <div className="flex items-center gap-2 px-2">
+                        <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-white/40">Provider</span>
+                        <ProviderSelector
+                            value={provider}
+                            onChange={setProvider}
+                        />
                     </div>
+                </div>
 
-                    <div className="w-px h-4 bg-black/10 dark:bg-white/10 mx-1"></div>
+                {/* Separator */}
+                <div className="hidden md:block w-px h-6 bg-black/5 dark:bg-white/5"></div>
 
-                    <button
-                        className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 dark:text-white/20 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-black/5 dark:hover:bg-white/5 transition-all relative"
-                        onMouseEnter={() => setShowInfo(true)}
-                        onMouseLeave={() => setShowInfo(false)}
-                    >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
 
-                        {/* Info Popover */}
-                        {showInfo && (
-                            <div className="absolute top-full right-0 mt-3 w-64 p-3 bg-white dark:bg-[#111] border border-black/10 dark:border-white/10 rounded-xl shadow-2xl backdrop-blur-xl z-50 animate-fade-in text-left">
-                                <h3 className="text-xs font-bold text-slate-800 dark:text-white mb-2 uppercase tracking-wide">Runtime Modes</h3>
-                                <div className="space-y-2">
-                                    <div className="flex gap-2">
-                                        <span className="text-[10px] font-bold text-cyan-600 dark:text-cyan-400 w-12 shrink-0">WEBGPU</span>
-                                        <p className="text-[10px] text-slate-500 dark:text-white/60 leading-tight">Fastest. Uses modern GPU hardware acceleration. Recommended.</p>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 w-12 shrink-0">WEBGL</span>
-                                        <p className="text-[10px] text-slate-500 dark:text-white/60 leading-tight">Balanced. Standard GPU acceleration supported by most browsers.</p>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400 w-12 shrink-0">WASM</span>
-                                        <p className="text-[10px] text-slate-500 dark:text-white/60 leading-tight">Fallback. Runs on CPU. Slower but works everywhere.</p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </button>
+                {/* Quantization Group */}
+                <div className="hidden md:flex items-center p-1 bg-black/5 dark:bg-white/5 rounded-xl border border-black/5 dark:border-white/5">
+                    <div className="flex items-center gap-2 px-2">
+                        <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-white/40">Quantization</span>
+                        <QuantizationSelector
+                            value={quantization}
+                            onChange={setQuantization}
+                        />
+                    </div>
                 </div>
 
                 {/* Separator */}
