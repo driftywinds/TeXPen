@@ -59,6 +59,7 @@ export async function beamSearch(
         if ((model as any).forward) {
           // Pass encoder_outputs instead of pixel_values
           outputs = await (model as any).forward({
+            pixel_values: pixelValues,
             encoder_outputs: encoderOutputs,
             decoder_input_ids: decoderInputIds,
             use_cache: true,
