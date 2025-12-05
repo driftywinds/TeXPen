@@ -302,9 +302,6 @@ export function needsSplit(line: string, pattern: Pattern): boolean {
 
   if (containsSplittableEnv) {
     const commentIndex = findCommentIndex(line, pattern);
-    if (commentIndex === null) {
-      return true;
-    }
 
     const match = RE_SPLITTING_SHARED_LINE_CAPTURE.exec(line);
     // In JS, match.groups contains named groups
@@ -314,11 +311,15 @@ export function needsSplit(line: string, pattern: Pattern): boolean {
       // But we can infer it from 'prev' length.
       const envStartIndex = match.groups.prev.length;
 
-      if (envStartIndex > commentIndex) {
+      if (commentIndex !== null && envStartIndex > commentIndex) {
         return false;
-      } else {
-        return true;
       }
+
+      if (envStartIndex === 0) {
+        return false;
+      }
+
+      return true;
     }
     return true;
   } else {

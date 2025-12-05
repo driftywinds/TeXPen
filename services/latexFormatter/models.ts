@@ -53,7 +53,7 @@ export const DEFAULT_ARGS: Args = {
   wrap: false,
   wraplen: 80,
   wrapmin: 40,
-  lists: [],
+  lists: ["itemize", "enumerate"],
   verbosity: 0
 };
 
