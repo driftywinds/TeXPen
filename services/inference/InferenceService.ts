@@ -3,16 +3,14 @@ import { removeStyle, addNewlines } from '../latexUtils';
 import { preprocess } from './imagePreprocessing';
 import { beamSearch } from './beamSearch';
 import { isWebGPUAvailable } from '../../utils/env';
-
-// Constants
-const MODEL_ID = 'onnx-community/TexTeller3-ONNX';
+import { INFERENCE_CONFIG, getSessionOptions, getGenerationConfig } from './config';
 
 export class InferenceService {
   private model: PreTrainedModel | null = null;
   private tokenizer: PreTrainedTokenizer | null = null;
   private static instance: InferenceService;
   private isInferring: boolean = false;
-  private dtype: string = 'fp32';
+  private dtype: string = INFERENCE_CONFIG.DEFAULT_QUANTIZATION;
 
   private constructor() { }
 
@@ -39,51 +37,18 @@ export class InferenceService {
 
     try {
       if (onProgress) onProgress('Loading tokenizer...');
-      this.tokenizer = await AutoTokenizer.from_pretrained(MODEL_ID);
+      this.tokenizer = await AutoTokenizer.from_pretrained(INFERENCE_CONFIG.MODEL_ID);
 
       const webgpuAvailable = await isWebGPUAvailable();
       const device = options.device || (webgpuAvailable ? 'webgpu' : 'wasm');
-      const dtype = options.dtype || (webgpuAvailable ? 'fp32' : 'q8'); // Default to fp32
+      const dtype = options.dtype || (webgpuAvailable ? INFERENCE_CONFIG.DEFAULT_QUANTIZATION : 'q8');
       this.dtype = dtype;
 
       if (onProgress) onProgress(`Loading model with ${device} (${dtype})... (this may take a while)`);
 
-      // Define file mappings based on dtype
-      // Note: We assume 'encoder_model.onnx' is used for fp16 if a specific fp16 encoder doesn't exist.
-      // The user provided links for:
-      // - decoder_with_past_model_fp16.onnx
-      // - encoder_model_int8.onnx
-      // - decoder_with_past_model_int8.onnx
+      const sessionOptions = getSessionOptions(device, dtype);
 
-      let sessionOptions: any = {
-        device: device,
-        dtype: dtype,
-      };
-
-      if (dtype === 'fp16') {
-        // Mixed Precision: Encoder (FP32) + Decoder (FP16)
-        // This prevents encoder instability while keeping decoder speed.
-        sessionOptions = {
-          device: device,
-          dtype: {
-            encoder_model: 'fp32',
-            decoder_model_merged: 'fp16',
-            decoder_with_past_model: 'fp16',
-          },
-          // Explicitly point to the files
-          encoder_model_file_name: 'encoder_model.onnx', // Default FP32
-          decoder_model_file_name: 'decoder_with_past_model_fp16.onnx',
-        };
-      } else if (dtype === 'q8') {
-        sessionOptions = {
-          ...sessionOptions,
-          encoder_model_file_name: 'encoder_model_int8.onnx',
-          decoder_model_file_name: 'decoder_with_past_model_int8.onnx',
-        };
-      }
-      // For fp32 (default), we rely on standard naming or explicit defaults if needed.
-
-      this.model = await AutoModelForVision2Seq.from_pretrained(MODEL_ID, sessionOptions);
+      this.model = await AutoModelForVision2Seq.from_pretrained(INFERENCE_CONFIG.MODEL_ID, sessionOptions);
 
       if (onProgress) onProgress('Ready');
     } catch (error) {
@@ -114,17 +79,11 @@ export class InferenceService {
       // 2. Generate candidates
       let candidates: string[];
       if (numCandidates <= 1) {
+        const generationConfig = getGenerationConfig(this.dtype, this.tokenizer);
+
         const outputTokenIds = await this.model!.generate({
           pixel_values: pixelValues,
-          max_new_tokens: 256, // Reduced to fail fast
-          do_sample: false,
-          num_beams: 1, // Explicitly greedy
-          pad_token_id: this.tokenizer!.pad_token_id,
-          eos_token_id: this.tokenizer!.eos_token_id,
-          bos_token_id: this.tokenizer!.bos_token_id,
-          decoder_start_token_id: this.tokenizer!.bos_token_id,
-          // Only apply repetition penalty for fp16 to prevent loops
-          ...(this.dtype === 'fp16' ? { repetition_penalty: 1.25 } : {}),
+          ...generationConfig,
         } as any);
 
         const generatedText = this.tokenizer!.decode(outputTokenIds[0], {

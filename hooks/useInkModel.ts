@@ -2,7 +2,9 @@ import { useState, useCallback, useEffect } from 'react';
 import { ModelConfig, Candidate } from '../types';
 import { inferenceService } from '../services/inference/InferenceService';
 
-export function useInkModel(theme: 'light' | 'dark', quantization: string = 'fp32', provider: 'webgpu' | 'wasm' | 'webgl') {
+import { INFERENCE_CONFIG } from '../services/inference/config';
+
+export function useInkModel(theme: 'light' | 'dark', quantization: string = INFERENCE_CONFIG.DEFAULT_QUANTIZATION, provider: 'webgpu' | 'wasm' | 'webgl') {
   const [numCandidates, setNumCandidates] = useState<number>(1);
   const [config, setConfig] = useState<ModelConfig>({
     encoderModelUrl: 'onnx-community/TexTeller3-ONNX',

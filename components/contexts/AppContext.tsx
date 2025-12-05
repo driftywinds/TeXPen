@@ -3,6 +3,7 @@ import { ModelConfig, Candidate, HistoryItem } from '../../types';
 import { useInkModel } from '../../hooks/useInkModel';
 import { useThemeContext } from './ThemeContext';
 import { isWebGPUAvailable } from '../../utils/env';
+import { INFERENCE_CONFIG } from '../../services/inference/config';
 
 type Provider = 'webgpu' | 'wasm' | 'webgl';
 
@@ -50,8 +51,8 @@ export const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { theme } = useThemeContext();
-    const [quantization, setQuantization] = useState<string>('fp32');
-    const [provider, setProvider] = useState<Provider>('wasm');
+    const [quantization, setQuantization] = useState<string>(INFERENCE_CONFIG.DEFAULT_QUANTIZATION);
+    const [provider, setProvider] = useState<Provider>(INFERENCE_CONFIG.DEFAULT_PROVIDER as Provider);
 
     useEffect(() => {
         isWebGPUAvailable().then(available => {
