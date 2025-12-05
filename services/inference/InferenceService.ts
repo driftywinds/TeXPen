@@ -4,9 +4,10 @@ import { preprocess } from './imagePreprocessing';
 import { beamSearch } from './beamSearch';
 import { isWebGPUAvailable } from '../../utils/env';
 import { INFERENCE_CONFIG, getSessionOptions, getGenerationConfig } from './config';
+import { InferenceOptions, InferenceResult, VisionEncoderDecoderModel } from './types';
 
 export class InferenceService {
-  private model: PreTrainedModel | null = null;
+  private model: VisionEncoderDecoderModel | null = null;
   private tokenizer: PreTrainedTokenizer | null = null;
   private static instance: InferenceService;
   private isInferring: boolean = false;
@@ -21,7 +22,7 @@ export class InferenceService {
     return InferenceService.instance;
   }
 
-  public async init(onProgress?: (status: string, progress?: number) => void, options: { dtype?: string, device?: 'webgpu' | 'wasm' | 'webgl' } = {}): Promise<void> {
+  public async init(onProgress?: (status: string, progress?: number) => void, options: InferenceOptions = {}): Promise<void> {
     if (this.model && this.tokenizer) {
       // If the model is already loaded, but the quantization or device is different, we need to dispose and reload.
       if ((options.dtype && (this.model as any).config.dtype !== options.dtype) ||
@@ -48,7 +49,7 @@ export class InferenceService {
 
       const sessionOptions = getSessionOptions(device, dtype);
 
-      this.model = await AutoModelForVision2Seq.from_pretrained(INFERENCE_CONFIG.MODEL_ID, sessionOptions);
+      this.model = await AutoModelForVision2Seq.from_pretrained(INFERENCE_CONFIG.MODEL_ID, sessionOptions) as VisionEncoderDecoderModel;
 
       if (onProgress) onProgress('Ready');
     } catch (error) {
@@ -57,7 +58,7 @@ export class InferenceService {
     }
   }
 
-  public async infer(imageBlob: Blob, numCandidates: number = 1): Promise<{ latex: string; candidates: string[]; debugImage: string }> {
+  public async infer(imageBlob: Blob, numCandidates: number = 1): Promise<InferenceResult> {
     if (this.isInferring) {
       throw new Error("Another inference is already in progress.");
     }
@@ -79,12 +80,12 @@ export class InferenceService {
       // 2. Generate candidates
       let candidates: string[];
       if (numCandidates <= 1) {
-        const generationConfig = getGenerationConfig(this.dtype, this.tokenizer);
+        const generationConfig = getGenerationConfig(this.dtype, this.tokenizer!);
 
-        const outputTokenIds = await this.model!.generate({
+        const outputTokenIds = await this.model!.generate!({
           pixel_values: pixelValues,
           ...generationConfig,
-        } as any);
+        });
 
         const generatedText = this.tokenizer!.decode(outputTokenIds[0], {
           skip_special_tokens: true,

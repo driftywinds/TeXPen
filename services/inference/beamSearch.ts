@@ -1,10 +1,11 @@
-import { PreTrainedModel, PreTrainedTokenizer, Tensor } from '@huggingface/transformers';
+import { PreTrainedTokenizer, Tensor } from '@huggingface/transformers';
+import { VisionEncoderDecoderModel } from './types';
 
 // Beam type
-type Beam = { tokens: number[]; score: number; done: boolean };
+import { Beam } from './types';
 
 export async function beamSearch(
-  model: PreTrainedModel,
+  model: VisionEncoderDecoderModel,
   tokenizer: PreTrainedTokenizer,
   pixelValues: Tensor,
   numBeams: number,
