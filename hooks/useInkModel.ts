@@ -156,10 +156,20 @@ export function useInkModel(theme: 'light' | 'dark', quantization: string = INFE
             setStatus('idle');
             resolve(null);
           }
-        } catch (e) {
-          console.error('Inference error:', e);
-          setStatus('error');
-          reject(e);
+        } catch (e: any) {
+          if (e.message === 'Aborted' || e.message === 'Skipped' || e.name === 'AbortError') {
+            console.log('Inference aborted/skipped:', e.message);
+            // Do not set status to error, just silently fail
+            // We might want to set status back to idle if it was inferencing?
+            // Usually another inference immediately takes over, setting it to inferencing.
+            // If we set it to idle it might flash. kept as is or conditional?
+            // If this was the last one, maybe idle? But hard to know.
+            // Safest is to just NOT set error.
+          } else {
+            console.error('Inference error:', e);
+            setStatus('error');
+            reject(e);
+          }
         } finally {
           setIsInferencing(false);
         }

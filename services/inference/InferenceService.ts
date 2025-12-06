@@ -78,54 +78,170 @@ export class InferenceService {
     }
   }
 
-  public async infer(imageBlob: Blob, numCandidates: number = 1): Promise<InferenceResult> {
-    if (this.isInferring) {
-      throw new Error("Another inference is already in progress.");
-    }
-    this.isInferring = true;
+  private abortController: AbortController | null = null;
+  private currentInferencePromise: Promise<void> | null = null;
+  private isProcessingQueue: boolean = false;
+  private wakeQueuePromise: ((value: void) => void) | null = null;
 
-    let pixelValues: Tensor | null = null;
-    let debugImage: string = '';
+  private pendingRequest: {
+    blob: Blob;
+    numCandidates: number;
+    resolve: (value: InferenceResult | PromiseLike<InferenceResult>) => void;
+    reject: (reason?: any) => void;
+  } | null = null;
+
+  public async infer(imageBlob: Blob, numCandidates: number = 1): Promise<InferenceResult> {
+    return new Promise((resolve, reject) => {
+      // 1. If there's already a pending request, reject it (Skipped)
+      if (this.pendingRequest) {
+        this.pendingRequest.reject(new Error("Skipped"));
+      }
+
+      // 2. Set new pending request
+      this.pendingRequest = {
+        blob: imageBlob,
+        numCandidates,
+        resolve,
+        reject
+      };
+
+      // 3. Wake up the loop if it's waiting
+      if (this.wakeQueuePromise) {
+        this.wakeQueuePromise();
+        this.wakeQueuePromise = null;
+      }
+
+      // 4. Ensure queue processing is running
+      if (!this.isProcessingQueue) {
+        this.processQueue();
+      }
+    });
+  }
+
+  private async processQueue() {
+    this.isProcessingQueue = true;
 
     try {
-      if (!this.model || !this.tokenizer) {
-        await this.init();
+      while (this.pendingRequest) {
+        // If an inference is currently running, we need to decide: Wait or Abort?
+        if (this.currentInferencePromise && this.isInferring) {
+          console.log('[InferenceService] New request pending. Allowing current inference 3s grace period...');
+
+          let timedOut = false;
+          const timeoutPromise = new Promise(resolve => setTimeout(() => {
+            timedOut = true;
+            resolve('timeout');
+          }, 3000));
+
+          // Wait for either the inference to finish naturally OR the 3s timer
+          await Promise.race([this.currentInferencePromise, timeoutPromise]);
+
+          if (timedOut && this.isInferring) {
+            console.warn('[InferenceService] 3s grace period expired. Aborting current inference.');
+            this.abortController?.abort();
+            // Critical: Must wait for it to actually cleanup before starting next
+            try { await this.currentInferencePromise; } catch (e) { /* ignore */ }
+          }
+        }
+
+        // Double check pendingRequest still exists (it should)
+        if (!this.pendingRequest) break;
+
+        // Pop the request
+        const req = this.pendingRequest;
+        this.pendingRequest = null;
+
+        // Start the inference
+        this.isInferring = true;
+        this.abortController = new AbortController();
+        const signal = this.abortController.signal;
+
+        // Create a promise wrapper for this inference
+        this.currentInferencePromise = (async () => {
+          let pixelValues: Tensor | null = null;
+          let debugImage: string = '';
+
+          try {
+            if (!this.model || !this.tokenizer) {
+              await this.init();
+            }
+            if (signal.aborted) throw new Error("Aborted");
+
+            const { tensor, debugImage: dbgImg } = await preprocess(req.blob);
+            pixelValues = tensor;
+            debugImage = dbgImg;
+
+            if (signal.aborted) throw new Error("Aborted");
+
+            const generationConfig = getGenerationConfig(this.dtype, this.tokenizer!);
+            const repetitionPenalty = generationConfig.repetition_penalty || 1.0;
+            const effectiveNumBeams = req.numCandidates;
+
+            let candidates = await beamSearch(
+              this.model!,
+              this.tokenizer!,
+              pixelValues,
+              effectiveNumBeams,
+              signal,
+              generationConfig.max_new_tokens,
+              repetitionPenalty
+            );
+
+            candidates = candidates.map(c => this.postprocess(c));
+
+            if (signal.aborted) throw new Error("Aborted");
+
+            req.resolve({
+              latex: candidates[0] || '',
+              candidates,
+              debugImage
+            });
+
+          } catch (e: any) {
+            if (e.message === 'Skipped') {
+              req.reject(e);
+            } else if (e.message === 'Aborted' || signal.aborted) {
+              console.warn('[InferenceService] Inference aborted.');
+              req.reject(new Error("Aborted"));
+            } else {
+              console.error('[InferenceService] Error:', e);
+              req.reject(e);
+            }
+          } finally {
+            if (pixelValues) pixelValues.dispose();
+            this.isInferring = false;
+            this.abortController = null;
+            this.currentInferencePromise = null;
+
+            // If pending request exists, wake up the loop if it was stuck expecting more?
+            // Actually, since this promise resolves, the loop below (await this.currentInferencePromise)
+            // will unblock, allowing the loop to continue.
+            if (this.wakeQueuePromise) {
+              this.wakeQueuePromise();
+              this.wakeQueuePromise = null;
+            }
+          }
+        })();
+
+        // Wait for this inference to complete OR for a new request to come in
+        // If a new request comes in, we want to wake up and race it against the timer.
+        // We race: currentInferencePromise VS newRequestSignal
+
+        if (this.pendingRequest) {
+          // Immediately loop back to check race logic
+          continue;
+        } else {
+          // Wait for completion or new request
+          await Promise.race([
+            this.currentInferencePromise,
+            new Promise<void>(resolve => { this.wakeQueuePromise = resolve; })
+          ]);
+          // If woke up by new request, loop continues and hits the top 'if (pending)' block
+          // If woke up by completion, loop continues, checks pending, if null, breaks.
+        }
       }
-
-      // 1. Preprocess
-      const { tensor, debugImage: dbgImg } = await preprocess(imageBlob);
-      pixelValues = tensor;
-      debugImage = dbgImg;
-
-      // 2. Generate candidates
-      let candidates: string[];
-      if (numCandidates <= 1) {
-        const generationConfig = getGenerationConfig(this.dtype, this.tokenizer!);
-
-        const outputTokenIds = await this.model!.generate!({
-          pixel_values: pixelValues,
-          ...generationConfig,
-        });
-
-        const generatedText = this.tokenizer!.decode(outputTokenIds[0], {
-          skip_special_tokens: true,
-        });
-        candidates = [this.postprocess(generatedText)];
-      } else {
-        candidates = await beamSearch(this.model!, this.tokenizer!, pixelValues, numCandidates);
-        candidates = candidates.map(c => this.postprocess(c));
-      }
-
-      return {
-        latex: candidates[0] || '',
-        candidates,
-        debugImage
-      };
     } finally {
-      if (pixelValues) {
-        pixelValues.dispose();
-      }
-      this.isInferring = false;
+      this.isProcessingQueue = false;
     }
   }
 

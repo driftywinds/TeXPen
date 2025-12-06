@@ -4,13 +4,16 @@ import { VisionEncoderDecoderModel } from './types';
 // Beam type
 import { Beam } from './types';
 
+
 export async function beamSearch(
   model: VisionEncoderDecoderModel,
   tokenizer: PreTrainedTokenizer,
   pixelValues: Tensor,
   numBeams: number,
+  signal?: AbortSignal,
+  maxTokens: number = 256,
+  repetitionPenalty: number = 1.0,
 ): Promise<string[]> {
-  const maxTokens = 512;
   const eosTokenId = tokenizer.eos_token_id as number;
   const bosTokenId = tokenizer.bos_token_id as number;
   const padTokenId = tokenizer.pad_token_id as number;
@@ -18,24 +21,36 @@ export async function beamSearch(
   let beams: Beam[] = [{ tokens: [bosTokenId], score: 0, done: false }];
 
   // 1. Run Encoder ONCE
-  // This is the critical optimization. We don't want to re-run the vision encoder (heavy)
-  // for every single token step.
   let encoderOutputs: any = null;
   try {
+    if (signal?.aborted) throw new Error("Aborted");
+
     if ((model as any).encoder) {
-      // console.log('[DEBUG] Running encoder...');
       encoderOutputs = await (model as any).encoder({
         pixel_values: pixelValues,
       });
-      // console.log('[DEBUG] Encoder complete.');
     }
   } catch (e) {
+    if ((e as Error).message === "Aborted") throw e;
     console.error("Failed to run encoder:", e);
     throw e;
   }
 
   // Step through generation token by token
   for (let step = 0; step < maxTokens; step++) {
+    if (signal?.aborted) {
+      // Dispose encoder outputs before throwing
+      if (encoderOutputs) {
+        for (const key in encoderOutputs) {
+          const val = encoderOutputs[key];
+          if (val && typeof val.dispose === 'function') {
+            val.dispose();
+          }
+        }
+      }
+      throw new Error("Aborted");
+    }
+
     const allCandidates: Beam[] = [];
 
     for (const beam of beams) {
@@ -58,7 +73,6 @@ export async function beamSearch(
 
         // Try forward pass to get logits
         if ((model as any).forward) {
-          // Pass encoder_outputs instead of pixel_values
           outputs = await (model as any).forward({
             pixel_values: pixelValues,
             encoder_outputs: encoderOutputs,
@@ -77,7 +91,8 @@ export async function beamSearch(
         }
 
         if (!logitsData) {
-          // Fallback: greedy generation
+          // Fallback: greedy generation (no repetition penalty easily applied here without customizing generate)
+          // For now, assume forward pass works or fallback ignores penalty/signal for this single step
           const result = await model.generate({
             pixel_values: pixelValues,
             max_new_tokens: 1,
@@ -95,11 +110,32 @@ export async function beamSearch(
             done: nextToken === eosTokenId
           });
 
-          // Dispose result if it's a tensor-like object we created/received
           if (result && typeof (result as any).dispose === 'function') {
             (result as any).dispose();
           }
           continue;
+        }
+
+        // Apply Repetition Penalty
+        if (repetitionPenalty !== 1.0) {
+          const counts = new Map<number, number>();
+          for (const token of beam.tokens) {
+            counts.set(token, (counts.get(token) || 0) + 1);
+          }
+          for (const [token, count] of counts) {
+            if (token < logitsData.length) {
+              // Standard repetition penalty: 
+              // if score < 0, score = score * penalty
+              // if score > 0, score = score / penalty
+              // (Logits are log-odds, so positive means likely, negative means unlikely)
+              // Wait, standard paper (Keskar et al) formulation:
+              // logit' = logit / (penalty if token in previously_generated else 1) ... NO that's temperature
+              // Actually: if logit < 0: logit * penalty, else logit / penalty.
+              // This pushes "good" tokens (positive) down, and "bad" tokens (negative) further down.
+              const val = logitsData[token];
+              logitsData[token] = val < 0 ? val * repetitionPenalty : val / repetitionPenalty;
+            }
+          }
         }
 
         // Compute log probabilities from logits
@@ -123,10 +159,8 @@ export async function beamSearch(
 
       } catch (error) {
         console.error('[DEBUG] Beam step error:', error);
-        // On error, mark beam as done
         allCandidates.push({ ...beam, done: true });
       } finally {
-        // Dispose tensors
         if (decoderInputIds) decoderInputIds.dispose();
         if (outputs) {
           for (const key in outputs) {
@@ -176,3 +210,4 @@ export async function beamSearch(
 
   return candidates;
 }
+
