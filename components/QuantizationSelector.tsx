@@ -8,7 +8,7 @@ interface QuantizationSelectorProps {
 }
 
 const options = [
-    { value: 'fp32', label: 'FP32 (Large, Slow)' },
+    { value: 'fp32', label: 'FP32 (Default)' },
     { value: 'fp16', label: 'FP16 (Disabled - Bad Performance)', isDisabled: true },
     { value: 'q8', label: 'INT8 (Disabled - Bad Performance)', isDisabled: true },
 ];
