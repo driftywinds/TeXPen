@@ -4,12 +4,13 @@ Bugs
 - [ ] revert to up/down split screen in upload tab for more space
 
 Behavior
-- [ ] Replace the `candidates` information component to actually state its purpose (model generating multiple guesses for input)
 
 Features
+- [x] Make history persist between sessions
 
 Visuals
 - [ ] Match buttons in upload tab to rest of theme
+- [ ] Bottom right corner in history entries
 
 Maintenance
 - [ ] refactor and add tests

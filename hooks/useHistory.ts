@@ -1,8 +1,25 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { HistoryItem } from '../types';
 
 export const useHistory = () => {
-  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [history, setHistory] = useState<HistoryItem[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const item = window.localStorage.getItem('inktex_history');
+      return item ? JSON.parse(item) : [];
+    } catch (error) {
+      console.warn('Failed to load history from localStorage:', error);
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('inktex_history', JSON.stringify(history));
+    } catch (error) {
+      console.warn('Failed to save history to localStorage:', error);
+    }
+  }, [history]);
 
   const addToHistory = (item: HistoryItem) => {
     setHistory(prev => {
