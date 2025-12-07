@@ -81,7 +81,7 @@ const Header: React.FC = () => {
                                     setNumCandidates(Math.min(5, Math.max(1, val)));
                                 }
                             }}
-                            className="w-10 h-6 text-center text-xs font-mono bg-white dark:bg-white/10 rounded-md border border-black/10 dark:border-white/10 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 text-slate-700 dark:text-white"
+                            className="w-12 h-7 text-center text-xs font-mono bg-black/[0.05] dark:bg-white/[0.05] rounded-lg border border-black/10 dark:border-white/10 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 text-slate-700 dark:text-white transition-all hover:bg-black/[0.08] dark:hover:bg-white/[0.08] hover:border-black/20 dark:hover:border-white/20"
                         />
 
                         <div className="relative group/info">
