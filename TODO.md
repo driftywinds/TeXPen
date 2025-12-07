@@ -3,7 +3,8 @@ Priority
 Bugs
 
 Behavior
-- [ ] Make logo look less awkward
+- [x] Make logo look less awkward
+- [ ] Simplify sidebar (no double layer)
 
 Features
 

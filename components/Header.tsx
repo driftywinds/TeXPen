@@ -1,29 +1,44 @@
 import React from 'react';
 import { useAppContext } from './contexts/AppContext';
-import { QuantizationSelector } from './QuantizationSelector';
-import { ProviderSelector } from './ProviderSelector';
+import { TeXPenLogo } from './TeXPenLogo';
+import { SettingsMenu } from './SettingsMenu';
 
 const Header: React.FC = () => {
     const {
         numCandidates,
         setNumCandidates,
-        quantization,
-        setQuantization,
-        provider,
-        setProvider,
-        showVisualDebugger,
-        setShowVisualDebugger,
     } = useAppContext();
 
     return (
-        <div className="h-14 flex-none flex items-center justify-end px-6 border-b border-black/5 dark:border-white/5 bg-white/40 dark:bg-black/20 select-none z-30 backdrop-blur-md">
+        <div className="h-16 flex-none flex items-center justify-between px-6 border-b border-black/5 dark:border-white/5 bg-white/40 dark:bg-black/20 select-none z-30 backdrop-blur-md">
+
+            {/* Left: Logo */}
+            <div className="flex items-center gap-3 group">
+                {/* Minimalist Nib Icon */}
+                <div className="relative flex items-center justify-center">
+                    <div className="absolute inset-0 bg-cyan-500/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <svg className="w-8 h-8 text-cyan-500 dark:text-cyan-400 transform group-hover:-rotate-12 transition-transform duration-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        {/* Nib Body */}
+                        <path d="M12 19l7-7 3 3-7 7-3-3z" />
+                        <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
+                        {/* Ink Channel */}
+                        <path d="M2 2l7.586 7.586" />
+                        {/* Breather hole */}
+                        <circle cx="11" cy="11" r="2" />
+                        {/* Drawing Curve */}
+                        <path d="M12 19 C 12 19, 8 23, 4 21" className="opacity-0 group-hover:opacity-100 transition-opacity duration-500" strokeWidth="2" />
+                    </svg>
+                </div>
+                <TeXPenLogo className="h-8 w-auto" />
+            </div>
+
             {/* Right: Controls */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
 
                 {/* Candidate Count Group */}
-                <div className="hidden md:flex items-center p-1 bg-black/5 dark:bg-white/5 rounded-xl border border-black/5 dark:border-white/5">
+                <div className="flex items-center p-1 bg-black/5 dark:bg-white/5 rounded-xl border border-black/5 dark:border-white/5">
                     <div className="flex items-center gap-2 px-2">
-                        <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-white/40">Candidates</span>
+                        <span className="hidden sm:inline text-[10px] font-bold uppercase text-slate-400 dark:text-white/40">Candidates</span>
                         <input
                             type="number"
                             min="1"
@@ -54,51 +69,8 @@ const Header: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Separator */}
-                <div className="hidden md:block w-px h-6 bg-black/5 dark:bg-white/5"></div>
-
-                {/* Provider Group */}
-                <div className="hidden md:flex items-center p-1 bg-black/5 dark:bg-white/5 rounded-xl border border-black/5 dark:border-white/5">
-                    <div className="flex items-center gap-2 px-2">
-                        <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-white/40">Provider</span>
-                        <ProviderSelector
-                            value={provider}
-                            onChange={setProvider}
-                        />
-                    </div>
-                </div>
-
-                {/* Separator */}
-                <div className="hidden md:block w-px h-6 bg-black/5 dark:bg-white/5"></div>
-
-
-                {/* Quantization Group */}
-                <div className="hidden md:flex items-center p-1 bg-black/5 dark:bg-white/5 rounded-xl border border-black/5 dark:border-white/5">
-                    <div className="flex items-center gap-2 px-2">
-                        <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-white/40">Quantization</span>
-                        <QuantizationSelector
-                            value={quantization}
-                            onChange={setQuantization}
-                        />
-                    </div>
-                </div>
-
-                {/* Separator */}
-                <div className="hidden md:block w-px h-6 bg-black/5 dark:bg-white/5"></div>
-
-                {/* Debug Toggle */}
-                <button
-                    onClick={() => setShowVisualDebugger(!showVisualDebugger)}
-                    className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-all shadow-sm ${showVisualDebugger
-                        ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-600 dark:text-cyan-400'
-                        : 'bg-black/5 dark:bg-white/5 border-black/5 dark:border-white/5 text-slate-500 dark:text-white/40 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-black/10 dark:hover:bg-white/10'
-                        }`}
-                    title={showVisualDebugger ? "Hide Visual Debugger" : "Show Visual Debugger"}
-                >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                    </svg>
-                </button>
+                {/* Settings Menu */}
+                <SettingsMenu />
 
             </div>
         </div>

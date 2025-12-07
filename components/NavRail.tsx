@@ -1,7 +1,5 @@
 import React from 'react';
-import { useThemeContext } from './contexts/ThemeContext';
 import { useAppContext } from './contexts/AppContext';
-import { TeXPenLogo } from './TeXPenLogo';
 
 interface NavRailProps {
     activeMode: 'draw' | 'upload';
@@ -9,38 +7,11 @@ interface NavRailProps {
 }
 
 const NavRail: React.FC<NavRailProps> = ({ activeMode, onModeChange }) => {
-    const { theme, toggleTheme } = useThemeContext();
     const { isSidebarOpen, toggleSidebar } = useAppContext();
 
     return (
         <div className="flex flex-col w-20 h-full bg-white dark:bg-[#0c0c0c] border-r border-black/5 dark:border-white/5 z-20 flex-none transition-colors duration-500">
-            {/* Logo Area */}
-            <div className="flex flex-col items-center justify-center py-6 gap-2">
-                <div className="group relative flex items-center justify-center w-12 h-12">
-                    <div className="absolute inset-0 bg-cyan-500/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    {/* Minimalist Nib Icon with Flow Curve */}
-                    <svg className="w-10 h-10 text-cyan-500 dark:text-cyan-400 transform group-hover:-rotate-12 transition-transform duration-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        {/* Nib Body */}
-                        <path d="M12 19l7-7 3 3-7 7-3-3z" />
-                        <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
-                        {/* Ink Channel */}
-                        <path d="M2 2l7.586 7.586" />
-                        {/* Breather hole */}
-                        <circle cx="11" cy="11" r="2" />
-                        {/* Drawing Curve */}
-                        <path d="M12 19 C 12 19, 8 23, 4 21" className="opacity-0 group-hover:opacity-100 transition-opacity duration-500" strokeWidth="2" />
-                    </svg>
-                </div>
-
-                {/* Brand Name - Custom TeXPen Logo */}
-                <div className="w-16 h-8 flex items-center justify-center">
-                    <TeXPenLogo
-                        className="w-full h-full text-slate-900 dark:text-white relative z-10 transition-all duration-300"
-                    />
-                </div>
-            </div>
-
-            {/* Main Navigation */}
+            {/* Main Navigation - Draw/Upload */}
             <div className="flex-1 flex flex-col items-center gap-4 py-8">
                 {/* Draw Mode */}
                 <button
@@ -79,7 +50,7 @@ const NavRail: React.FC<NavRailProps> = ({ activeMode, onModeChange }) => {
                 </button>
             </div>
 
-            {/* Bottom Actions */}
+            {/* Bottom Actions - History */}
             <div className="flex flex-col items-center gap-3 py-6 pb-8">
                 {/* History Toggle */}
                 <button
@@ -95,23 +66,6 @@ const NavRail: React.FC<NavRailProps> = ({ activeMode, onModeChange }) => {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v5h5" />
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 7v5l4 2" />
                     </svg>
-                </button>
-
-                {/* Theme Toggle */}
-                <button
-                    onClick={toggleTheme}
-                    className="w-10 h-10 rounded-xl text-slate-400 dark:text-white/30 hover:text-amber-500 dark:hover:text-yellow-300 hover:bg-black/5 dark:hover:bg-white/5 flex items-center justify-center transition-all duration-200"
-                    title="Toggle Theme"
-                >
-                    {theme === 'dark' ? (
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                        </svg>
-                    ) : (
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                        </svg>
-                    )}
                 </button>
             </div>
         </div>
