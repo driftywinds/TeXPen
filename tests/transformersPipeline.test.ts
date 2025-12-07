@@ -10,7 +10,7 @@ env.useBrowserCache = false;
 
 describe('Transformers Pipeline', () => {
   it('should run image-to-text pipeline on test image', async () => {
-    const imagePath = path.resolve(__dirname, '../public/test.png');
+    const imagePath = path.resolve(__dirname, '../public/assets/test.png');
 
     if (!fs.existsSync(imagePath)) {
       console.warn('Test image not found, skipping pipeline test');

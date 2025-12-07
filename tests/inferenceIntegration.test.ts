@@ -58,7 +58,7 @@ describe('InferenceService Integration', () => {
   // 60 seconds might be enough if cached, otherwise it might take longer.
   // Since this is a test, we hopefully have it cached or we accept it takes time.
   it('should run end-to-end inference on test image', async () => {
-    const imagePath = path.resolve(__dirname, '../public/test.png');
+    const imagePath = path.resolve(__dirname, '../public/assets/test.png');
 
     if (!fs.existsSync(imagePath)) {
       console.warn('Test image not found, skipping integration test');

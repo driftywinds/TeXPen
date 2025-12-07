@@ -2,7 +2,7 @@ import React from 'react';
 import { useAppContext } from '../../contexts/AppContext';
 
 // UPDATE THIS LINE:
-const TEST_IMAGE_URL = "/test.png";
+const TEST_IMAGE_URL = "/assets/test.png";
 
 const DebugTest: React.FC = () => {
     const { inferFromUrl, status } = useAppContext();
