@@ -1,12 +1,13 @@
 Priority
 
 Bugs
+- [ ] Fix image upload tab going off screen
 
 Behavior
+- [ ] Change history logo from clock to arrow clock
 
 Features
-- [x] add image upload tab
-    - ~~change loading UI to allow changing tabs while loading model, block canvas~~
+- [ ] Allow paste image upload
 
 Maintenance
 - [ ] refactor and add tests
