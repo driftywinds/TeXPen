@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import Select, { StylesConfig } from 'react-select';
 import { useMathJax } from '../hooks/useMathJax';
 import { HistoryItem } from '../types';
-import { TrashIcon, CheckIcon, XIcon } from './icons/HistoryIcons';
+import { TrashIcon, CheckIcon, XIcon, PenIcon } from './icons/HistoryIcons';
 import { useHistorySidebar } from '../hooks/useHistorySidebar';
 import { useAppContext } from './contexts/AppContext';
 import { useThemeContext } from './contexts/ThemeContext';
@@ -297,6 +297,11 @@ const HistorySidebar: React.FC<HistorySidebarProps> = ({
                                                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                                                     </svg>
+                                                </span>
+                                            )}
+                                            {item.source === 'draw' && (
+                                                <span className="flex-none p-1 rounded-md bg-cyan-100 dark:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400" title="Drawn Equation">
+                                                    <PenIcon />
                                                 </span>
                                             )}
 

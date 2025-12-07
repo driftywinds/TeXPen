@@ -1,6 +1,7 @@
 Priority
 
 Bugs
+- [ ] History saving when switching tabs creates versions
 
 Behavior
 
