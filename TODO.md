@@ -5,9 +5,9 @@ Bugs
 Behavior
 
 Features
+- [ ] Add favicon
 
 Visuals
-- [ ] Match buttons in upload tab to rest of theme
 - [ ] What is the bottom right corner in history entries
 - [ ] Improve history entry UI
 

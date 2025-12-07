@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useAppContext } from './contexts/AppContext';
 import { useThemeContext } from './contexts/ThemeContext';
 import { useHistoryContext } from './contexts/HistoryContext';
@@ -43,6 +43,20 @@ const Main: React.FC = () => {
     // To match "seamless", let's strictly switch views.
     const [showUploadResult, setShowUploadResult] = useState(false);
     const [uploadPreview, setUploadPreview] = useState<string | null>(null);
+    const uploadFileInputRef = useRef<HTMLInputElement>(null);
+
+    // Handle file selection from the hidden input
+    const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file && file.type.startsWith('image/')) {
+            const url = URL.createObjectURL(file);
+            setUploadPreview(url);
+            // Go back to upload page so user can start inference
+            setShowUploadResult(false);
+        }
+        // Reset input so same file can be selected again
+        e.target.value = '';
+    }, []);
 
     // Reset upload state when switching tabs
     React.useEffect(() => {
@@ -53,6 +67,27 @@ const Main: React.FC = () => {
             setShowUploadResult(false);
             setUploadPreview(null);
         }
+    }, [activeTab]);
+
+    // Handle paste in upload mode (works in both preview and result views)
+    React.useEffect(() => {
+        if (activeTab !== 'upload') return;
+
+        const handlePaste = (e: ClipboardEvent) => {
+            if (e.clipboardData && e.clipboardData.files.length > 0) {
+                const file = e.clipboardData.files[0];
+                if (file.type.startsWith('image/')) {
+                    e.preventDefault();
+                    const url = URL.createObjectURL(file);
+                    setUploadPreview(url);
+                    // Go back to upload page so user can start inference
+                    setShowUploadResult(false);
+                }
+            }
+        };
+
+        window.addEventListener('paste', handlePaste);
+        return () => window.removeEventListener('paste', handlePaste);
     }, [activeTab]);
 
     const handleInference = async (canvas: HTMLCanvasElement) => {
@@ -80,9 +115,8 @@ const Main: React.FC = () => {
     };
 
     const handleUploadAnother = () => {
-        // We keep the preview so the user sees the old one until they select a new one.
-        // setUploadPreview(null); 
-        setShowUploadResult(false);
+        // Directly open file picker instead of going back to upload page
+        uploadFileInputRef.current?.click();
     };
 
     // Only show full overlay for initial model loading (User Confirmation), or critical errors.
@@ -113,6 +147,15 @@ const Main: React.FC = () => {
     return (
         <div className="relative h-screen w-full overflow-hidden font-sans bg-[#fafafa] dark:bg-black transition-colors duration-500 flex flex-row">
             <LiquidBackground />
+
+            {/* Hidden file input for "Upload Another" functionality */}
+            <input
+                type="file"
+                ref={uploadFileInputRef}
+                className="hidden"
+                accept="image/*"
+                onChange={handleFileInputChange}
+            />
 
             {/* Global glass background wrapper */}
             <div className="absolute inset-0 z-0 bg-white/60 dark:bg-[#0c0c0c]/80 backdrop-blur-md transition-colors duration-500 pointer-events-none" />
