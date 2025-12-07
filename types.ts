@@ -30,6 +30,7 @@ export interface HistoryItem {
   latex: string;
   timestamp: number;
   source?: 'draw' | 'upload';
+  versions?: HistoryItem[];
 }
 
 export type ModelStatus = 'loading' | 'ready' | 'error' | 'inferencing';

@@ -19,6 +19,21 @@ const HistorySidebar: React.FC<HistorySidebarProps> = ({
     isOpen,
 }) => {
     const { toggleSidebar } = useAppContext();
+    const [expandedItems, setExpandedItems] = React.useState<Set<string>>(new Set());
+
+    const toggleExpand = (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        setExpandedItems(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) {
+                next.delete(id);
+            } else {
+                next.add(id);
+            }
+            return next;
+        });
+    };
+
     const {
         confirmDeleteId,
         sanitizeLatex,
@@ -27,8 +42,11 @@ const HistorySidebar: React.FC<HistorySidebarProps> = ({
         handleCancel
     } = useHistorySidebar(onDelete);
 
-    // Trigger MathJax when history updates
-    useMathJax(history, undefined, 'history-math');
+    // Trigger MathJax when history updates or expandedItems change
+    // We pass expandedItems in the dependency array (as the first arg)
+    // so that when a user expands a section, the new content gets typeset.
+    useMathJax([history, expandedItems], undefined, 'history-math');
+    useMathJax([history, expandedItems], undefined, 'history-math-version');
 
     return (
         <div
@@ -77,9 +95,31 @@ const HistorySidebar: React.FC<HistorySidebarProps> = ({
                                     onClick={() => onSelect(item)}
                                 >
                                     <div className="flex items-center justify-between mb-2 whitespace-nowrap overflow-hidden">
-                                        <span className="text-[10px] items-center font-mono text-slate-400 dark:text-white/30">
-                                            {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
+                                        <div className="flex items-center gap-2 overflow-hidden">
+                                            {item.versions && item.versions.length > 1 && (
+                                                <button
+                                                    onClick={(e) => toggleExpand(e, item.id)}
+                                                    className={`
+                                                        p-1 rounded-md text-slate-400 dark:text-white/30 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-black/5 dark:hover:bg-white/5 transition-all
+                                                        ${expandedItems.has(item.id) ? 'rotate-90 text-cyan-600 dark:text-cyan-400' : ''}
+                                                    `}
+                                                >
+                                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                                                    </svg>
+                                                </button>
+                                            )}
+                                            {item.source === 'upload' && (
+                                                <span className="flex-none p-1 rounded-md bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-300" title="Uploaded Image">
+                                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                                    </svg>
+                                                </span>
+                                            )}
+                                            <span className="text-[10px] items-center font-mono text-slate-400 dark:text-white/30">
+                                                {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                        </div>
                                         {!isConfirming && (
                                             <button
                                                 onClick={(e) => handleDeleteClick(e, item.id)}
@@ -113,6 +153,31 @@ const HistorySidebar: React.FC<HistorySidebarProps> = ({
                                             >
                                                 <XIcon />
                                             </button>
+                                        </div>
+                                    )}
+
+                                    {/* Versions Dropdown */}
+                                    {expandedItems.has(item.id) && item.versions && (
+                                        <div className="mt-2 border-t border-black/5 dark:border-white/5 pt-2 space-y-1 animate-in slide-in-from-top-1 duration-200">
+                                            {item.versions.map((version, vIndex) => (
+                                                <div
+                                                    key={vIndex}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onSelect(version);
+                                                    }}
+                                                    className="px-2 py-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer flex items-center justify-between group/version transition-colors"
+                                                >
+                                                    <div className="flex items-center gap-2 overflow-hidden w-full">
+                                                        <div className="text-[9px] text-slate-400 dark:text-white/20 font-mono w-3 shrink-0">
+                                                            {vIndex + 1}
+                                                        </div>
+                                                        <div className="text-[10px] text-slate-600 dark:text-white/60 font-mono truncate history-math-version w-full">
+                                                            {`\\(${sanitizeLatex(version.latex)}\\)`}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
                                     )}
                                 </div>

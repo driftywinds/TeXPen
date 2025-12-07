@@ -9,14 +9,54 @@ export const useHistory = () => {
       // Smart Session Logic:
       // If the new item belongs to the same session as the most recent item,
       // we update the recent item instead of creating a new one.
-      // This groups continuous strokes into a single history entry.
       if (prev.length > 0 && prev[0].sessionId === item.sessionId) {
-        const updated = [...prev];
-        updated[0] = item; // Update in-place
-        return updated;
+        const existingItem = prev[0];
+        // Create a snapshot of the current state (the "new" version becomes the latest)
+        // We want to keep a history of all versions.
+        // Let's interpret "versions" as: [oldest, ..., newest] or [newest, ..., oldest]?
+        // Let's store them chronologically: [version 1, version 2, ...].
+        // Actually, maybe it's better to verify what the user wants.
+        // "Dropdown of stroke history".
+
+        // Logic:
+        // 1. The main item always shows the LATEST state (so the list looks like the final result).
+        // 2. The `versions` array accumulates every state that led here.
+
+        const previousVersions = existingItem.versions || [];
+        // Add the *current* state of the item (before this update) to versions? 
+        // Or just add the *new* item to versions?
+        // Let's say versions should contain ALL steps including the current one.
+
+        // If this is the FIRST update to an existing item, we need to make sure the *original* state is saved too.
+        // But `addToHistory` is called *after* inference.
+        // Ideally:
+        // - First stroke: Item created. versions = [Item].
+        // - Second stroke: Item updated. versions = [Item_v1, Item_v2].
+
+        let newVersions = [...previousVersions];
+
+        // If versions was empty, it means this was the first item. Add the initial state.
+        if (newVersions.length === 0) {
+          // Reconstruct the initial version from the existing item
+          newVersions.push({ ...existingItem, versions: undefined });
+        }
+
+        // Add the NEW state as a version
+        newVersions.push({ ...item, versions: undefined });
+
+        // Update the main item to reflect the new state, and attach the full history
+        const updatedItem = {
+          ...item,
+          versions: newVersions
+        };
+
+        const newHistory = [...prev];
+        newHistory[0] = updatedItem;
+        return newHistory;
       }
-      // Otherwise, it's a new session (or first item), so add it.
-      return [item, ...prev].slice(0, 20);
+
+      // New Session: Create new item, initialize its version history with itself
+      return [{ ...item, versions: [{ ...item, versions: undefined }] }, ...prev].slice(0, 20);
     });
   };
 
