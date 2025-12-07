@@ -3,7 +3,7 @@ Priority
 Bugs
 
 Behavior
-- [ ] Make clicking upload another image not remove current preview in case user cancels
+- [x] Make clicking upload another image not remove current preview in case user cancels
 
 Features
 

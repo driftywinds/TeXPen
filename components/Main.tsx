@@ -77,7 +77,8 @@ const Main: React.FC = () => {
     };
 
     const handleUploadAnother = () => {
-        setUploadPreview(null);
+        // We keep the preview so the user sees the old one until they select a new one.
+        // setUploadPreview(null); 
         setShowUploadResult(false);
     };
 
