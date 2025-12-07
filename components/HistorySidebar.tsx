@@ -1,9 +1,11 @@
 import React from 'react';
+import Select, { StylesConfig } from 'react-select';
 import { useMathJax } from '../hooks/useMathJax';
 import { HistoryItem } from '../types';
 import { TrashIcon, CheckIcon, XIcon } from './icons/HistoryIcons';
 import { useHistorySidebar } from '../hooks/useHistorySidebar';
 import { useAppContext } from './contexts/AppContext';
+import { useThemeContext } from './contexts/ThemeContext';
 
 interface HistorySidebarProps {
     history: HistoryItem[];
@@ -18,8 +20,18 @@ const HistorySidebar: React.FC<HistorySidebarProps> = ({
     onDelete,
     isOpen,
 }) => {
-    const { toggleSidebar } = useAppContext();
+    const { toggleSidebar, activeTab } = useAppContext();
+    const { theme } = useThemeContext();
     const [expandedItems, setExpandedItems] = React.useState<Set<string>>(new Set());
+    const [filterMode, setFilterMode] = React.useState<'all' | 'current'>('all');
+
+    // Filter history based on mode and active tab
+    const filteredHistory = history.filter(item => {
+        if (filterMode === 'all') return true;
+
+        const itemSource = item.source || 'draw'; // Default legacy items to 'draw'
+        return itemSource === activeTab;
+    });
 
     const toggleExpand = (e: React.MouseEvent, id: string) => {
         e.stopPropagation();
@@ -45,48 +57,130 @@ const HistorySidebar: React.FC<HistorySidebarProps> = ({
     // Trigger MathJax when history updates or expandedItems change
     // We pass expandedItems in the dependency array (as the first arg)
     // so that when a user expands a section, the new content gets typeset.
-    useMathJax([history, expandedItems], undefined, 'history-math');
-    useMathJax([history, expandedItems], undefined, 'history-math-version');
+    useMathJax([filteredHistory, expandedItems], undefined, 'history-math');
+    useMathJax([filteredHistory, expandedItems], undefined, 'history-math-version');
+
+    const filterOptions = [
+        { value: 'all', label: 'All History' },
+        { value: 'current', label: `Active Tab (${activeTab === 'draw' ? 'Drawings' : 'Uploads'})` }
+    ];
+
+    const customStyles: StylesConfig = {
+        control: (provided) => ({
+            ...provided,
+            width: '100%',
+            height: 28,
+            minHeight: 28,
+            backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgb(255, 255, 255)',
+            border: `1px solid ${theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+            borderRadius: '0.375rem',
+            boxShadow: 'none',
+            '&:hover': {
+                borderColor: theme === 'dark' ? 'rgb(34 211 238)' : 'rgb(6 182 212)',
+            },
+        }),
+        valueContainer: (provided) => ({
+            ...provided,
+            height: '28px',
+            padding: '0 8px',
+        }),
+        input: (provided) => ({
+            ...provided,
+            margin: '0px',
+            height: '28px',
+            color: theme === 'dark' ? 'white' : 'black',
+        }),
+        indicatorSeparator: () => ({
+            display: 'none',
+        }),
+        indicatorsContainer: (provided) => ({
+            ...provided,
+            height: '28px',
+        }),
+        singleValue: (provided) => ({
+            ...provided,
+            color: theme === 'dark' ? 'white' : '#1f2937',
+            fontSize: '0.75rem',
+            fontFamily: 'monospace', // Matching settings font if generalized, or keeping sidebar aesthetic? Provider used monospace. Let's use sans for history for readability or inherit. ProviderSelector used monospace. I'll stick to default sans for history labels as they are text.
+            // Actually ProviderSelector uses monospace because it shows code-like enum values (webgpu). History labels are UI text. I will remove fontFamily monospace.
+        }),
+        menu: (provided) => ({
+            ...provided,
+            backgroundColor: theme === 'dark' ? '#111' : 'white',
+            border: `1px solid ${theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+            borderRadius: '0.5rem',
+            zIndex: 50,
+        }),
+        option: (provided, { isSelected, isFocused }) => ({
+            ...provided,
+            backgroundColor: isSelected
+                ? (theme === 'dark' ? 'rgb(6 182 212)' : 'rgb(6 182 212)')
+                : isFocused
+                    ? (theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)')
+                    : 'transparent',
+            color: isSelected ? 'white' : (theme === 'dark' ? 'white' : '#1f2937'),
+            fontSize: '0.875rem',
+            cursor: 'pointer',
+        }),
+    };
 
     return (
         <div
             className={`flex-none flex flex-col border-r border-black/5 dark:border-white/5 bg-white dark:bg-[#0c0c0c] transition-all duration-300 ease-in-out ${isOpen ? 'w-64' : 'w-16'}`}
         >
             {/* Header with Toggle */}
-            <div className="flex-none h-16 flex items-center border-b border-black/5 dark:border-white/5 overflow-hidden">
-                {/* Toggle Button (Always visible, fixed width) */}
-                <div className="flex-none w-16 h-16 flex items-center justify-center">
-                    <button
-                        onClick={toggleSidebar}
-                        className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-slate-500 dark:text-white/40 hover:text-cyan-600 dark:hover:text-cyan-400 transition-all"
-                        title={isOpen ? "Collapse Sidebar" : "Expand Sidebar"}
-                    >
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v5h5" />
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 7v5l4 2" />
-                        </svg>
-                    </button>
+            <div className="flex-none flex flex-col border-b border-black/5 dark:border-white/5 overflow-hidden">
+                <div className="h-16 flex items-center">
+                    {/* Toggle Button (Always visible, fixed width) */}
+                    <div className="flex-none w-16 h-16 flex items-center justify-center">
+                        <button
+                            onClick={toggleSidebar}
+                            className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-slate-500 dark:text-white/40 hover:text-cyan-600 dark:hover:text-cyan-400 transition-all"
+                            title={isOpen ? "Collapse Sidebar" : "Expand Sidebar"}
+                        >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v5h5" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 7v5l4 2" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    {/* Title (Hidden when closed) */}
+                    <div className={`flex-1 flex justify-between items-center pr-4 transition-opacity duration-200 ${isOpen ? 'opacity-100 delay-75' : 'opacity-0'} whitespace-nowrap overflow-hidden`}>
+                        <>
+                            <span className="text-xs font-semibold text-slate-500 dark:text-white/40 uppercase tracking-wider">History</span>
+                            <span className="text-[10px] text-slate-400 dark:text-white/20">{filteredHistory.length}</span>
+                        </>
+                    </div>
                 </div>
 
-                {/* Title (Hidden when closed) */}
-                <div className={`flex-1 flex justify-between items-center pr-4 transition-opacity duration-200 ${isOpen ? 'opacity-100 delay-75' : 'opacity-0'} whitespace-nowrap overflow-hidden`}>
-                    <>
-                        <span className="text-xs font-semibold text-slate-500 dark:text-white/40 uppercase tracking-wider">History</span>
-                        <span className="text-[10px] text-slate-400 dark:text-white/20">{history.length}</span>
-                    </>
+                {/* Filter Dropdown */}
+                <div className={`px-4 pb-4 transition-all duration-300 ${isOpen ? 'opacity-100 h-auto' : 'opacity-0 h-0 pointer-events-none'}`}>
+                    <Select
+                        value={filterOptions.find(o => o.value === filterMode)}
+                        onChange={(option: { value: string; label: string } | null) => setFilterMode((option?.value as 'all' | 'current') || 'all')}
+                        options={filterOptions}
+                        styles={{
+                            ...customStyles,
+                            menuPortal: (base) => ({ ...base, zIndex: 9999 })
+                        }}
+                        isSearchable={false}
+                        menuPlacement="auto"
+                        menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
+                    />
                 </div>
             </div>
 
             {/* List */}
             <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-2 custom-scrollbar">
                 <div className={`transition-opacity duration-200 ${isOpen ? 'opacity-100 delay-100' : 'opacity-0 pointer-events-none'}`}>
-                    {history.length === 0 ? (
+                    {filteredHistory.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-48 px-4 text-center whitespace-nowrap overflow-hidden">
-                            <span className="text-xs text-slate-400 dark:text-white/20 italic">No history yet.</span>
+                            <span className="text-xs text-slate-400 dark:text-white/20 italic">No {filterMode === 'all' ? 'history' : (activeTab === 'draw' ? 'drawings' : 'uploads')} yet.</span>
                         </div>
                     ) : (
-                        history.map((item) => {
+                        filteredHistory.map((item) => {
                             const isConfirming = confirmDeleteId === item.id;
                             return (
                                 <div
