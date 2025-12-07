@@ -9,8 +9,56 @@ interface OutputDisplayProps {
 
 const OutputDisplay: React.FC<OutputDisplayProps> = ({ latex, isInferencing = false, className }) => {
     // Trigger MathJax on latex change OR when inferencing ends (spinner hidden)
-    // We pass both values so MathJax re-typesets when transitioning from spinner to content
     useMathJax({ latex, isInferencing }, 'latex-output');
+
+    const containerRef = React.useRef<HTMLDivElement>(null);
+    const contentRef = React.useRef<HTMLDivElement>(null);
+    const [scale, setScale] = React.useState(1);
+
+    // Scaling Logic
+    React.useEffect(() => {
+        const handleResize = () => {
+            if (containerRef.current && contentRef.current && latex) {
+                const containerWidth = containerRef.current.clientWidth;
+                const containerHeight = containerRef.current.clientHeight;
+                const contentWidth = contentRef.current.scrollWidth;
+                const contentHeight = contentRef.current.scrollHeight;
+
+                // Margins/Padding buffer
+                const paddingX = 64; // px-8 * 2
+                const paddingY = 32; // py-4 * 2
+
+                const availableWidth = containerWidth - paddingX;
+                const availableHeight = containerHeight - paddingY;
+
+                let newScale = 1;
+
+                // Only scale down if content exceeds bounds
+                if (contentWidth > availableWidth || contentHeight > availableHeight) {
+                    const scaleX = availableWidth / contentWidth;
+                    const scaleY = availableHeight / contentHeight;
+                    newScale = Math.min(scaleX, scaleY);
+                }
+
+                // Min scale limit to prevent illegibility
+                newScale = Math.max(0.4, newScale);
+
+                setScale(newScale);
+            } else {
+                setScale(1);
+            }
+        };
+
+        // Run initially and on updates
+        handleResize();
+
+        // Observe resizing
+        const resizeObserver = new ResizeObserver(handleResize);
+        if (containerRef.current) resizeObserver.observe(containerRef.current);
+        if (contentRef.current) resizeObserver.observe(contentRef.current);
+
+        return () => resizeObserver.disconnect();
+    }, [latex, isInferencing]); // Re-run when latex changes
 
     const handleCopy = () => {
         if (latex) navigator.clipboard.writeText(latex);
@@ -18,24 +66,26 @@ const OutputDisplay: React.FC<OutputDisplayProps> = ({ latex, isInferencing = fa
 
     const sanitizeLatex = (text: string) => {
         if (!text) return '';
-
         // Remove all instances of delimiters globally.
-        // We use the 'g' flag to catch them anywhere in the string.
         const clean = text
-            .replace(/\\\[/g, '')  // Remove \[
-            .replace(/\\\]/g, '')  // Remove \]
-            .replace(/\\\(/g, '')  // Remove \(
-            .replace(/\\\)/g, '')  // Remove \)
-            .replace(/\$\$/g, '')  // Remove $$
-            .replace(/^\$|\$$/g, ''); // Remove single $ at start or end
-
+            .replace(/\\\[/g, '')
+            .replace(/\\\]/g, '')
+            .replace(/\\\(/g, '')
+            .replace(/\\\)/g, '')
+            .replace(/\$\$/g, '')
+            .replace(/^\$|\$$/g, '');
         return clean.trim();
     };
 
     return (
-        <div className={`relative flex flex-col items-center justify-center bg-gradient-to-b from-white/[0.2] dark:from-white/[0.02] to-transparent z-10 ${className || 'h-[30%] md:h-[35%]'}`}>
-            <div className="w-full h-full overflow-x-auto overflow-y-auto scrollbar-thin flex relative">
-                <div id="latex-output" className="m-auto text-center text-2xl md:text-5xl text-slate-800 dark:text-white px-8 py-4 leading-relaxed">
+        <div ref={containerRef} className={`relative flex flex-col items-center justify-center bg-gradient-to-b from-white/[0.2] dark:from-white/[0.02] to-transparent z-10 overflow-hidden ${className || 'h-[30%] md:h-[35%]'}`}>
+            <div className="w-full h-full flex items-center justify-center relative">
+                <div
+                    ref={contentRef}
+                    id="latex-output"
+                    className="text-center text-2xl md:text-5xl text-slate-800 dark:text-white px-8 py-4 leading-relaxed transition-transform duration-200 origin-center flex items-center justify-center whitespace-nowrap"
+                    style={{ transform: `scale(${scale})` }}
+                >
                     {isInferencing ? (
                         <div className="flex items-center justify-center gap-3 text-blue-500 dark:text-blue-400">
                             {/* Animated spinner */}
@@ -53,7 +103,7 @@ const OutputDisplay: React.FC<OutputDisplayProps> = ({ latex, isInferencing = fa
                 </div>
             </div>
 
-            {/* ... existing Action Bar code ... */}
+            {/* Action Bar */}
             <div className="absolute top-4 right-4 flex gap-2">
                 <button
                     onClick={handleCopy}

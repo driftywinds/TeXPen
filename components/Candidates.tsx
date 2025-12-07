@@ -3,8 +3,11 @@ import { useAppContext } from './contexts/AppContext';
 
 
 // Component to render a single candidate with MathJax
+// Component to render a single candidate with MathJax
 const MathCandidate: React.FC<{ latex: string }> = ({ latex }) => {
     const ref = useRef<HTMLSpanElement>(null);
+    const parentRef = useRef<HTMLDivElement>(null);
+    const [scale, setScale] = React.useState(1);
 
     // Clean LaTeX for rendering
     const cleanLatex = latex
@@ -20,14 +23,50 @@ const MathCandidate: React.FC<{ latex: string }> = ({ latex }) => {
         if (ref.current && window.MathJax) {
             // Clear previous content
             ref.current.innerHTML = `\\(${cleanLatex}\\)`;
-            window.MathJax.typesetPromise([ref.current]).catch((err: Error) => {
+            window.MathJax.typesetPromise([ref.current]).then(() => {
+                // Trigger resize check after typesetting
+                checkResize();
+            }).catch((err: Error) => {
                 console.error('MathJax error:', err);
                 if (ref.current) ref.current.textContent = cleanLatex;
             });
         }
     }, [cleanLatex]);
 
-    return <span ref={ref} className="relative z-10">{cleanLatex}</span>;
+    const checkResize = () => {
+        if (ref.current && parentRef.current) {
+            const contentWidth = ref.current.offsetWidth;
+            const containerWidth = parentRef.current.offsetWidth;
+
+            // Add slight padding buffer
+            const availableWidth = containerWidth - 16;
+
+            if (contentWidth > availableWidth) {
+                const newScale = Math.max(0.5, availableWidth / contentWidth);
+                setScale(newScale);
+            } else {
+                setScale(1);
+            }
+        }
+    };
+
+    // Re-check on window resize
+    useEffect(() => {
+        window.addEventListener('resize', checkResize);
+        return () => window.removeEventListener('resize', checkResize);
+    }, []);
+
+    return (
+        <div ref={parentRef} className="w-full flex justify-center overflow-hidden">
+            <span
+                ref={ref}
+                className="relative z-10 whitespace-nowrap transition-transform origin-center"
+                style={{ transform: `scale(${scale})` }}
+            >
+                {cleanLatex}
+            </span>
+        </div>
+    );
 };
 
 const Candidates: React.FC = () => {
@@ -82,9 +121,7 @@ const Candidates: React.FC = () => {
                                 }
               `}
                         >
-                            <div className="truncate w-full text-center">
-                                <MathCandidate latex={cand.latex} />
-                            </div>
+                            <MathCandidate latex={cand.latex} />
 
                             {/* Active Indicator Dot */}
                             {selectedIndex === idx && (

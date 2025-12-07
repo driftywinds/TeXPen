@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import Select, { StylesConfig } from 'react-select';
 import { useMathJax } from '../hooks/useMathJax';
 import { HistoryItem } from '../types';
@@ -13,6 +13,77 @@ interface HistorySidebarProps {
     onDelete: (id: string) => void;
     isOpen: boolean;
 }
+
+// Scalable Math Item Component
+const MathHistoryItem: React.FC<{ latex: string }> = ({ latex }) => {
+    const ref = useRef<HTMLDivElement>(null);
+    const parentRef = useRef<HTMLDivElement>(null);
+    const [scale, setScale] = React.useState(1);
+
+    // Clean LaTeX
+    const cleanLatex = latex
+        .replace(/\\\[/g, '')
+        .replace(/\\\]/g, '')
+        .replace(/\\\(/g, '')
+        .replace(/\\\)/g, '')
+        .replace(/\$\$/g, '')
+        .replace(/^\$|\$$/g, '')
+        .trim();
+
+    useEffect(() => {
+        if (ref.current && window.MathJax) {
+            ref.current.innerHTML = `\\(${cleanLatex}\\)`;
+            window.MathJax.typesetPromise([ref.current]).then(() => {
+                checkResize();
+            }).catch((err: Error) => console.error('MathJax error:', err));
+        }
+    }, [cleanLatex]);
+
+    const checkResize = () => {
+        if (ref.current && parentRef.current) {
+            const contentWidth = ref.current.scrollWidth;
+            const containerWidth = parentRef.current.clientWidth;
+
+            // Add padding buffer (Gradient is w-8 = 32px, plus some extra safety)
+            const availableWidth = containerWidth - 40;
+
+            if (contentWidth > availableWidth) {
+                const newScale = Math.max(0.6, availableWidth / contentWidth);
+                setScale(newScale);
+            } else {
+                setScale(1);
+            }
+        }
+    };
+
+    // Re-check on simple resize (sidebar toggle can affect this, so maybe ResizeObserver is better)
+    useEffect(() => {
+        const handleResize = () => requestAnimationFrame(checkResize);
+        window.addEventListener('resize', handleResize);
+
+        // Also observe parent size changes
+        const observer = new ResizeObserver(handleResize);
+        if (parentRef.current) observer.observe(parentRef.current);
+
+        return () => {
+            window.removeEventListener('resize', handleResize);
+            observer.disconnect();
+        };
+    }, []);
+
+    return (
+        <div ref={parentRef} className="relative h-8 flex items-center overflow-hidden w-full">
+            <div
+                ref={ref}
+                className="text-xs text-slate-700 dark:text-white/80 font-mono w-full whitespace-nowrap transition-transform origin-left"
+                style={{ transform: `scale(${scale})`, width: 'fit-content' }}
+            >
+                {`\\(${cleanLatex}\\)`}
+            </div>
+            <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white dark:from-[#0c0c0c] to-transparent pointer-events-none" />
+        </div>
+    );
+};
 
 const HistorySidebar: React.FC<HistorySidebarProps> = ({
     history,
@@ -223,12 +294,9 @@ const HistorySidebar: React.FC<HistorySidebarProps> = ({
                                             </button>
                                         )}
                                     </div>
-                                    <div className="relative h-8 flex items-center overflow-hidden w-full">
-                                        <div className="text-xs text-slate-700 dark:text-white/80 font-mono w-full history-math whitespace-nowrap overflow-hidden text-ellipsis">
-                                            {`\\(${sanitizeLatex(item.latex)}\\)`}
-                                        </div>
-                                        <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white dark:from-[#0c0c0c] to-transparent pointer-events-none" />
-                                    </div>
+
+                                    {/* USE SCALABLE COMPONENT */}
+                                    <MathHistoryItem latex={item.latex} />
 
                                     {/* Confirmation Overlay */}
                                     {isConfirming && (
