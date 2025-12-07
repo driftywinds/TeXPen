@@ -52,7 +52,7 @@ const HistorySidebar: React.FC<HistorySidebarProps> = ({
                 </div>
 
                 {/* Title (Hidden when closed) */}
-                <div className={`flex-1 flex justify-between items-center pr-4 transition-opacity duration-200 ${isOpen ? 'opacity-100' : 'opacity-0'}`}>
+                <div className={`flex-1 flex justify-between items-center pr-4 transition-opacity duration-200 ${isOpen ? 'opacity-100 delay-75' : 'opacity-0'} whitespace-nowrap overflow-hidden`}>
                     <>
                         <span className="text-xs font-semibold text-slate-500 dark:text-white/40 uppercase tracking-wider">History</span>
                         <span className="text-[10px] text-slate-400 dark:text-white/20">{history.length}</span>
@@ -62,9 +62,9 @@ const HistorySidebar: React.FC<HistorySidebarProps> = ({
 
             {/* List */}
             <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-2 custom-scrollbar">
-                {isOpen ? (
-                    history.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-48 px-4 text-center">
+                <div className={`transition-opacity duration-200 ${isOpen ? 'opacity-100 delay-100' : 'opacity-0 pointer-events-none'}`}>
+                    {history.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-48 px-4 text-center whitespace-nowrap overflow-hidden">
                             <span className="text-xs text-slate-400 dark:text-white/20 italic">No history yet.</span>
                         </div>
                     ) : (
@@ -76,7 +76,7 @@ const HistorySidebar: React.FC<HistorySidebarProps> = ({
                                     className="group relative p-3 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] hover:bg-black/[0.05] dark:hover:bg-white/[0.05] border border-transparent hover:border-black/5 dark:hover:border-white/5 transition-all cursor-pointer"
                                     onClick={() => onSelect(item)}
                                 >
-                                    <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center justify-between mb-2 whitespace-nowrap overflow-hidden">
                                         <span className="text-[10px] items-center font-mono text-slate-400 dark:text-white/30">
                                             {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </span>
@@ -118,8 +118,8 @@ const HistorySidebar: React.FC<HistorySidebarProps> = ({
                                 </div>
                             );
                         })
-                    )
-                ) : null}
+                    )}
+                </div>
             </div>
 
             <style>{`
