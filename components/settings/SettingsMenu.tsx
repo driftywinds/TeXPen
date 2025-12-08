@@ -4,6 +4,7 @@ import { useThemeContext } from '../../contexts/ThemeContext';
 import { useHistoryContext } from '../../contexts/HistoryContext';
 import { ProviderSelector } from './ProviderSelector';
 import { QuantizationSelector } from './QuantizationSelector';
+import { INFERENCE_CONFIG } from '../../services/inference/config';
 
 export const SettingsMenu: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -95,17 +96,24 @@ export const SettingsMenu: React.FC = () => {
 
                     <div className="h-px bg-black/5 dark:bg-white/5 mx-2" />
 
-                    {/* Model ID */}
+                    {/* Model ID - With Reset Option */}
                     <div className="p-3">
-                        <div className="text-xs font-bold uppercase text-slate-400 dark:text-white/40 mb-2">HuggingFace Model ID</div>
+                        <div className="flex items-center justify-between mb-2">
+                            <div className="text-xs font-bold uppercase text-slate-400 dark:text-white/40">HuggingFace Model ID</div>
+                            <button
+                                onClick={() => setCustomModelId(INFERENCE_CONFIG.MODEL_ID)}
+                                className="text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/5"
+                                title={`Reset to ${INFERENCE_CONFIG.MODEL_ID}`}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                            </button>
+                        </div>
                         <input
                             type="text"
-                            defaultValue={customModelId}
-                            onBlur={(e) => {
-                                if (e.target.value !== customModelId) {
-                                    setCustomModelId(e.target.value);
-                                }
-                            }}
+                            value={customModelId}
+                            onChange={(e) => setCustomModelId(e.target.value)}
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
                                     e.currentTarget.blur();
