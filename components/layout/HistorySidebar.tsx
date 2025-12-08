@@ -100,11 +100,19 @@ const HistorySidebar: React.FC<HistorySidebarProps> = ({
                                 className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-slate-500 dark:text-white/40 hover:text-cyan-600 dark:hover:text-cyan-400 transition-all"
                                 title={isOpen ? "Collapse Sidebar" : "Expand Sidebar"}
                             >
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v5h5" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 7v5l4 2" />
-                                </svg>
+                                {isOpen ? (
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                        <line x1="9" y1="3" x2="9" y2="21" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 9l-3 3 3 3" />
+                                    </svg>
+                                ) : (
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                        <line x1="9" y1="3" x2="9" y2="21" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 9l3 3-3 3" />
+                                    </svg>
+                                )}
                             </button>
                         </div>
 
