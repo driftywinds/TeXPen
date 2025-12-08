@@ -42,7 +42,7 @@ const Header: React.FC = () => {
             </div>
 
             {/* Center: Mode Switcher */}
-            <div className="absolute left-1/2 -translate-x-1/2 flex items-center bg-black/5 dark:bg-white/5 p-1 rounded-full border border-black/5 dark:border-white/5">
+            <div className="flex md:absolute md:left-1/2 md:-translate-x-1/2 items-center bg-black/5 dark:bg-white/5 p-1 rounded-full border border-black/5 dark:border-white/5">
                 <button
                     onClick={() => setActiveTab('draw')}
                     className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 ${activeTab === 'draw'

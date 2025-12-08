@@ -175,7 +175,7 @@ const Main: React.FC = () => {
     );
 
     return (
-        <div className="relative h-screen w-full overflow-hidden font-sans bg-[#fafafa] dark:bg-black transition-colors duration-500 flex flex-row">
+        <div className="relative h-[100dvh] w-full overflow-hidden font-sans bg-[#fafafa] dark:bg-black transition-colors duration-500 flex flex-row">
             <LiquidBackground />
 
             {/* Hidden file input for "Upload Another" functionality */}
@@ -208,7 +208,7 @@ const Main: React.FC = () => {
 
                         {/* Conditionally Render Output and Candidates (Standard View for Draw Mode) */}
                         {activeTab === 'draw' && (
-                            <div className="flex-none h-[35%] md:h-[40%] flex flex-col w-full relative z-10">
+                            <div className="flex-none h-1/3 md:h-2/5 flex flex-col w-full relative z-10 shrink-0">
                                 <OutputDisplay
                                     latex={latex}
                                     isInferencing={isInferencing}

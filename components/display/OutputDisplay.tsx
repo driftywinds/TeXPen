@@ -25,11 +25,11 @@ const OutputDisplay: React.FC<OutputDisplayProps> = ({ latex, isInferencing = fa
                 const contentHeight = contentRef.current.scrollHeight;
 
                 // Margins/Padding buffer
-                const paddingX = 64; // px-8 * 2
-                const paddingY = 32; // py-4 * 2
+                // Dynamic safety buffer based on screen size (or just small constant)
+                const marginBuffer = 0;
 
-                const availableWidth = containerWidth - paddingX;
-                const availableHeight = containerHeight - paddingY;
+                const availableWidth = containerWidth - marginBuffer;
+                const availableHeight = containerHeight - marginBuffer;
 
                 let newScale = 1;
 
@@ -83,7 +83,7 @@ const OutputDisplay: React.FC<OutputDisplayProps> = ({ latex, isInferencing = fa
                 <div
                     ref={contentRef}
                     id="latex-output"
-                    className="text-center text-2xl md:text-5xl text-slate-800 dark:text-white px-8 py-4 leading-relaxed transition-transform duration-200 origin-center flex items-center justify-center whitespace-nowrap"
+                    className="text-center text-2xl md:text-5xl text-slate-800 dark:text-white px-4 md:px-8 py-4 leading-relaxed transition-transform duration-200 origin-center flex items-center justify-center whitespace-nowrap"
                     style={{ transform: `scale(${scale})` }}
                 >
                     {isInferencing ? (
