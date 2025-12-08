@@ -7,7 +7,7 @@ Behavior
 Features
 
 Visuals
-- [x] Make history entries look better, the boxes look out of place
+- [x] Improve equation preview and candidates display
 - [ ] Add icons to draw/upload tab buttons
 
 Maintenance

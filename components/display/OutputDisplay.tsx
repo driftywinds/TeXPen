@@ -78,7 +78,7 @@ const OutputDisplay: React.FC<OutputDisplayProps> = ({ latex, isInferencing = fa
     };
 
     return (
-        <div ref={containerRef} className={`relative flex flex-col items-center justify-center bg-gradient-to-b from-white/[0.2] dark:from-white/[0.02] to-transparent z-10 overflow-hidden ${className || 'h-[30%] md:h-[35%]'}`}>
+        <div ref={containerRef} className={`relative flex flex-col items-center justify-center z-10 overflow-hidden ${className || 'h-[30%] md:h-[35%]'}`}>
             <div className="w-full h-full flex items-center justify-center relative">
                 <div
                     ref={contentRef}
@@ -87,18 +87,18 @@ const OutputDisplay: React.FC<OutputDisplayProps> = ({ latex, isInferencing = fa
                     style={{ transform: `scale(${scale})` }}
                 >
                     {isInferencing ? (
-                        <div className="flex items-center justify-center gap-3 text-blue-500 dark:text-blue-400">
+                        <div className="flex items-center justify-center gap-3 text-cyan-500 dark:text-cyan-400">
                             {/* Animated spinner */}
                             <div className="relative w-6 h-6">
-                                <div className="absolute inset-0 border-2 border-blue-500/30 dark:border-blue-400/30 rounded-full"></div>
-                                <div className="absolute inset-0 border-2 border-blue-500 dark:border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+                                <div className="absolute inset-0 border-2 border-cyan-500/30 dark:border-cyan-400/30 rounded-full"></div>
+                                <div className="absolute inset-0 border-2 border-cyan-500 dark:border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
                             </div>
                             <span className="font-medium text-lg animate-pulse">Generating LaTeX...</span>
                         </div>
                     ) : latex ? (
                         `\\[${sanitizeLatex(latex)}\\]`
                     ) : (
-                        <span className="text-slate-300 dark:text-white/10 font-light italic text-xl">Equation preview...</span>
+                        <span className="text-slate-200 dark:text-white/5 font-medium text-3xl tracking-tight select-none">Equation preview...</span>
                     )}
                 </div>
             </div>
