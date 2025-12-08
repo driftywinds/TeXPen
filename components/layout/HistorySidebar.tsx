@@ -122,7 +122,7 @@ const HistorySidebar: React.FC<HistorySidebarProps> = ({
                             return (
                                 <div
                                     key={item.id}
-                                    className="group relative p-3 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 border border-black/5 dark:border-white/10 transition-all cursor-pointer"
+                                    className="group relative p-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
                                     onClick={() => onSelect(item)}
                                 >
                                     <div className="flex items-center justify-between mb-1 whitespace-nowrap overflow-hidden">
