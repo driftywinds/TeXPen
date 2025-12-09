@@ -20,18 +20,33 @@ const MathCandidate: React.FC<{ latex: string }> = ({ latex }) => {
         .trim();
 
     useEffect(() => {
-        if (ref.current && window.MathJax) {
-            // Clear previous content
-            ref.current.innerHTML = `\\(${cleanLatex}\\)`;
-            window.MathJax.typesetPromise([ref.current]).then(() => {
-                // Trigger resize check after typesetting
-                // Small delay to ensure layout is done
-                setTimeout(checkResize, 10);
-            }).catch((err: Error) => {
-                console.error('MathJax error:', err);
-                if (ref.current) ref.current.textContent = cleanLatex;
-            });
-        }
+        let isMounted = true;
+
+        const renderMath = () => {
+            if (!isMounted || !ref.current) return;
+
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                // Clear previous content
+                ref.current.innerHTML = `\\(${cleanLatex}\\)`;
+                window.MathJax.typesetPromise([ref.current]).then(() => {
+                    // Trigger resize check after typesetting
+                    // Small delay to ensure layout is done
+                    if (isMounted) setTimeout(checkResize, 10);
+                }).catch((err: Error) => {
+                    console.error('MathJax error:', err);
+                    if (ref.current && isMounted) ref.current.textContent = cleanLatex;
+                });
+            } else {
+                // Retry if MathJax isn't ready yet
+                setTimeout(renderMath, 100);
+            }
+        };
+
+        renderMath();
+
+        return () => {
+            isMounted = false;
+        };
     }, [cleanLatex]);
 
     const checkResize = () => {

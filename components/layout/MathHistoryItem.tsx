@@ -17,12 +17,27 @@ const MathHistoryItem: React.FC<{ latex: string }> = ({ latex }) => {
         .trim();
 
     useEffect(() => {
-        if (ref.current && window.MathJax) {
-            ref.current.innerHTML = `\\(${cleanLatex}\\)`;
-            window.MathJax.typesetPromise([ref.current]).then(() => {
-                checkResize();
-            }).catch((err: Error) => console.error('MathJax error:', err));
-        }
+        let isMounted = true;
+
+        const renderMath = () => {
+            if (!isMounted || !ref.current) return;
+
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                ref.current.innerHTML = `\\(${cleanLatex}\\)`;
+                window.MathJax.typesetPromise([ref.current]).then(() => {
+                    if (isMounted) checkResize();
+                }).catch((err: Error) => console.error('MathJax error:', err));
+            } else {
+                // Retry if MathJax isn't ready yet
+                setTimeout(renderMath, 100);
+            }
+        };
+
+        renderMath();
+
+        return () => {
+            isMounted = false;
+        };
     }, [cleanLatex]);
 
     const checkResize = () => {
