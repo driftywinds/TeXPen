@@ -7,8 +7,9 @@ import { QuantizationSelector } from './QuantizationSelector';
 import { INFERENCE_CONFIG } from '../../services/inference/config';
 
 export const SettingsMenu: React.FC = () => {
-    const [isOpen, setIsOpen] = useState(false);
+    // const [isOpen, setIsOpen] = useState(false); // REMOVE local state
     const menuRef = useRef<HTMLDivElement>(null);
+    const modelIdInputRef = useRef<HTMLInputElement>(null);
     const {
         quantization,
         setQuantization,
@@ -18,6 +19,10 @@ export const SettingsMenu: React.FC = () => {
         setShowVisualDebugger,
         customModelId,
         setCustomModelId,
+        isSettingsOpen,
+        openSettings,
+        closeSettings,
+        settingsFocus,
     } = useAppContext();
     const { theme, toggleTheme } = useThemeContext();
     const { filterMode, setFilterMode } = useHistoryContext();
@@ -26,18 +31,31 @@ export const SettingsMenu: React.FC = () => {
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
+                if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                    closeSettings();
+                }
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    // Handle auto-focus and selection when settings opens with specific focus target
+    useEffect(() => {
+        if (isSettingsOpen && settingsFocus === 'modelId' && modelIdInputRef.current) {
+            // Small timeout to ensure render visibility transition is done if any
+            setTimeout(() => {
+                modelIdInputRef.current?.focus();
+                modelIdInputRef.current?.select();
+            }, 50);
+        }
+    }, [isSettingsOpen, settingsFocus]);
+
     return (
         <div className="relative" ref={menuRef}>
             <button
-                onClick={() => setIsOpen(!isOpen)}
-                className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 border ${isOpen
+                onClick={() => isSettingsOpen ? closeSettings() : openSettings()}
+                className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 border ${isSettingsOpen
                     ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-600 dark:text-cyan-400'
                     : 'bg-black/5 dark:bg-white/5 border-black/5 dark:border-white/5 text-slate-500 dark:text-white/40 hover:text-slate-800 dark:hover:text-white hover:bg-black/10 dark:hover:bg-white/10'
                     }`}
@@ -50,7 +68,7 @@ export const SettingsMenu: React.FC = () => {
             </button>
 
             {/* Dropdown Menu */}
-            {isOpen && (
+            {isSettingsOpen && (
                 <div className="absolute right-0 top-full mt-3 w-64 bg-white dark:bg-[#111] border border-black/10 dark:border-white/10 rounded-2xl shadow-xl backdrop-blur-xl z-50 p-2 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-200 origin-top-right">
 
                     {/* Theme */}
@@ -111,6 +129,7 @@ export const SettingsMenu: React.FC = () => {
                             </button>
                         </div>
                         <input
+                            ref={modelIdInputRef}
                             type="text"
                             value={customModelId}
                             onChange={(e) => setCustomModelId(e.target.value)}

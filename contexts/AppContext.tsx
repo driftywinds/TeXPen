@@ -40,6 +40,12 @@ export interface AppContextType {
     showVisualDebugger: boolean;
     setShowVisualDebugger: (show: boolean) => void;
 
+    // Settings
+    isSettingsOpen: boolean;
+    settingsFocus: 'modelId' | null;
+    openSettings: (focusTarget?: 'modelId') => void;
+    closeSettings: () => void;
+
     // Sidebar
     isSidebarOpen: boolean;
     toggleSidebar: () => void;
@@ -224,6 +230,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const [showVisualDebugger, setShowVisualDebugger] = useState(false);
     const [sessionId, setSessionId] = useState<string>(Date.now().toString());
 
+    // Settings State
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [settingsFocus, setSettingsFocus] = useState<'modelId' | null>(null);
+
+    const openSettings = (focusTarget?: 'modelId') => {
+        setIsSettingsOpen(true);
+        if (focusTarget) {
+            setSettingsFocus(focusTarget);
+        } else {
+            setSettingsFocus(null);
+        }
+    };
+
+    const closeSettings = () => {
+        setIsSettingsOpen(false);
+        setSettingsFocus(null);
+    };
+
     // Refresh session on clear or load
     const refreshSession = () => {
         setSessionId(Date.now().toString());
@@ -280,6 +304,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isInitialized,
         showVisualDebugger,
         setShowVisualDebugger,
+
+        // Settings
+        isSettingsOpen,
+        settingsFocus,
+        openSettings,
+        closeSettings,
 
         // Sidebar
         isSidebarOpen,
