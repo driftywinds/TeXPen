@@ -15,6 +15,9 @@ import { MobileBottomNav } from './MobileBottomNav';
 
 
 const Main: React.FC = () => {
+    // Local state for the download prompt
+    const [isPromptDismissed, setIsPromptDismissed] = useState(false);
+
     const {
         status,
         latex,
@@ -86,6 +89,12 @@ const Main: React.FC = () => {
     }, [activeTab, setUploadPreview, setShowUploadResult]);
 
     const handleInference = async (canvas: HTMLCanvasElement) => {
+        // Enforce confirmation
+        if (!userConfirmed && !isLoadedFromCache) {
+            setIsPromptDismissed(false); // Re-show prompt
+            return; // Cancel implicit inference
+        }
+
         const result = await infer(canvas);
         if (result) {
             addToHistory({ id: Date.now().toString(), latex: result.latex, timestamp: Date.now(), source: 'draw', sessionId });
@@ -112,6 +121,13 @@ const Main: React.FC = () => {
 
     const handleUploadConvert = async () => {
         if (!uploadPreview) return;
+
+        // Enforce confirmation
+        if (!userConfirmed && !isLoadedFromCache) {
+            setIsPromptDismissed(false); // Re-show prompt
+            return; // Cancel implicit inference
+        }
+
         const result = await inferFromUrl(uploadPreview);
         if (result) {
             // Save image data to history
@@ -312,7 +328,12 @@ const Main: React.FC = () => {
             {showVisualDebugger && <VisualDebugger debugImage={debugImage} />}
 
             {/* Download Prompt / Error Overlay */}
-            {showFullOverlay && <LoadingOverlay />}
+            {showFullOverlay && (
+                <LoadingOverlay
+                    isDismissed={isPromptDismissed}
+                    onDismiss={() => setIsPromptDismissed(true)}
+                />
+            )}
 
 
         </div>

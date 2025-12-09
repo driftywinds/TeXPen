@@ -1,7 +1,12 @@
 import React from 'react';
 import { useAppContext } from '../../contexts/AppContext';
 
-const LoadingOverlay: React.FC = () => {
+interface LoadingOverlayProps {
+    isDismissed: boolean;
+    onDismiss: () => void;
+}
+
+const LoadingOverlay: React.FC<LoadingOverlayProps> = ({ isDismissed, onDismiss }) => {
     const {
         status,
         loadingPhase,
@@ -11,7 +16,6 @@ const LoadingOverlay: React.FC = () => {
         isLoadedFromCache,
     } = useAppContext();
 
-    const [dismissed, setDismissed] = React.useState(false);
     const { isInitialized } = useAppContext();
 
     const error = status === 'error' ? 'Failed to load models. Please check your internet connection and try again.' : undefined;
@@ -21,12 +25,11 @@ const LoadingOverlay: React.FC = () => {
     const needsConfirmation = isInitialized && !userConfirmed && !isLoadedFromCache;
 
     const onConfirm = () => setUserConfirmed(true);
-    const onClose = () => setDismissed(true);
 
     // Only show full overlay for initial permission/confirmation or errors.
     // We NO LONGER show it for standard model loading (handled by Main.tsx toast).
     // If dismissed, we also hide it (user can manually go to settings).
-    const showFullOverlay = isInitialized && !dismissed && ((status === 'error') || needsConfirmation);
+    const showFullOverlay = isInitialized && !isDismissed && ((status === 'error') || needsConfirmation);
 
     if (!showFullOverlay) {
         return null;
@@ -38,7 +41,7 @@ const LoadingOverlay: React.FC = () => {
                 {/* Close Button for non-error state */}
                 {!error && (
                     <button
-                        onClick={onClose}
+                        onClick={onDismiss}
                         className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
                         title="Close and configure manually"
                     >
@@ -86,7 +89,7 @@ const LoadingOverlay: React.FC = () => {
                                     Start Download
                                 </button>
                                 <button
-                                    onClick={onClose}
+                                    onClick={onDismiss}
                                     className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                                 >
                                     Configure Manually
