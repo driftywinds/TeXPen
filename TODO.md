@@ -7,7 +7,7 @@ Behavior
 - [ ] Make model loading message work on mobile
 
 Features
-- [ ] Allow selection and moving in canvas
+- [ ] Allow lasso/box selection
 
 Visuals
 

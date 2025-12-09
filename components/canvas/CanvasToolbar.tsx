@@ -34,6 +34,10 @@ const RedoIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 7v6h-6" /><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13" /></svg>
 );
 
+const SelectIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" /><path d="M13 13l6 6" /></svg>
+);
+
 const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
     activeTool,
     onToolChange,
@@ -89,6 +93,17 @@ const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
 
             {/* Tools */}
             <div className="relative flex flex-col items-center gap-1 p-1.5 bg-white/80 dark:bg-[#1a1a1a] backdrop-blur-sm border border-black/5 dark:border-white/10 rounded-full shadow-lg">
+                <button
+                    onClick={() => { onToolChange('select'); setShowEraserMenu(false); }}
+                    className={`p-2 rounded-full transition-all ${activeTool === 'select'
+                        ? 'bg-black text-white dark:bg-white dark:text-black shadow-sm'
+                        : 'text-slate-500 dark:text-white/40 hover:bg-black/5 dark:hover:bg-white/5'
+                        }`}
+                    title="Select"
+                >
+                    <SelectIcon />
+                </button>
+
                 <button
                     onClick={() => { onToolChange('pen'); setShowEraserMenu(false); }}
                     className={`p-2 rounded-full transition-all ${activeTool === 'pen'

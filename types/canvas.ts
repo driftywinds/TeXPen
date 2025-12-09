@@ -4,7 +4,7 @@ export interface Point {
   pressure?: number;
 }
 
-export type ToolType = 'pen' | 'eraser-radial' | 'eraser-line';
+export type ToolType = 'pen' | 'eraser-radial' | 'eraser-line' | 'select';
 
 export interface Stroke {
   points: Point[];

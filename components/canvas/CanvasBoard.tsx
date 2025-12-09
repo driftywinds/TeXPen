@@ -25,6 +25,11 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
     const strokesRef = externalStrokesRef || localStrokesRef;
     const currentStrokeRef = useRef<Point[]>([]);
 
+    // Selection State
+    const [selectedStrokeIndices, setSelectedStrokeIndices] = useState<number[]>([]);
+    const dragStartPos = useRef<{ x: number; y: number } | null>(null);
+    const isDragging = useRef<boolean>(false);
+
     const contentCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
     // Setup canvas size and style
@@ -107,7 +112,7 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
         ctx.lineWidth = 3;
         ctx.strokeStyle = theme === 'dark' ? '#ffffff' : '#000000';
 
-        strokesRef.current.forEach(stroke => {
+        strokesRef.current.forEach((stroke, index) => {
             if (stroke.points.length < 2) return;
             ctx.beginPath();
             ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
@@ -115,6 +120,27 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
                 ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
             }
             ctx.stroke();
+
+            // Draw selection highlight
+            if (selectedStrokeIndices.includes(index)) {
+                ctx.save();
+                ctx.strokeStyle = '#3b82f6'; // Blue color for selection
+                ctx.lineWidth = 1;
+                ctx.setLineDash([5, 5]);
+
+                // Calculate bounding box
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                stroke.points.forEach(p => {
+                    minX = Math.min(minX, p.x);
+                    minY = Math.min(minY, p.y);
+                    maxX = Math.max(maxX, p.x);
+                    maxY = Math.max(maxY, p.y);
+                });
+
+                const padding = 5;
+                ctx.strokeRect(minX - padding, minY - padding, (maxX - minX) + padding * 2, (maxY - minY) + padding * 2);
+                ctx.restore();
+            }
         });
 
         // Copy to visible canvas
@@ -129,7 +155,11 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
                 visibleCtx.restore();
             }
         }
-    }, [theme]);
+    }, [theme, selectedStrokeIndices]);
+
+    useEffect(() => {
+        redrawStrokes();
+    }, [redrawStrokes]);
 
     // Handle Theme Changes: Recolors existing strokes
     useEffect(() => {
@@ -280,6 +310,28 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
 
         if (activeTool === 'pen') {
             currentStrokeRef.current = [scaledPos];
+        } else if (activeTool === 'select') {
+            const clickedStrokeIndex = strokesRef.current.findIndex(stroke =>
+                isPointNearStroke(scaledPos, stroke, 10 * dpr)
+            );
+
+            if (clickedStrokeIndex !== -1) {
+                if (selectedStrokeIndices.includes(clickedStrokeIndex)) {
+                    // Clicking on already selected stroke -> prepare drag
+                    isDragging.current = true;
+                    dragStartPos.current = scaledPos;
+                } else {
+                    // New selection
+                    setSelectedStrokeIndices([clickedStrokeIndex]);
+                    isDragging.current = true;
+                    dragStartPos.current = scaledPos;
+                }
+            } else {
+                // Clicked on empty space
+                setSelectedStrokeIndices([]);
+                isDragging.current = false;
+                dragStartPos.current = null;
+            }
         }
 
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -338,6 +390,22 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
             if (strokesRef.current.length !== beforeCount) {
                 redrawStrokes();
             }
+        } else if (activeTool === 'select' && isDragging.current && dragStartPos.current) {
+            // Move Logic
+            const dx = scaledPos.x - lastPos.current.x;
+            const dy = scaledPos.y - lastPos.current.y;
+
+            selectedStrokeIndices.forEach(index => {
+                const stroke = strokesRef.current[index];
+                if (stroke) {
+                    stroke.points = stroke.points.map(p => ({
+                        x: p.x + dx,
+                        y: p.y + dy,
+                        pressure: p.pressure
+                    }));
+                }
+            });
+            redrawStrokes();
         }
 
         lastPos.current = scaledPos;
@@ -359,6 +427,8 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
     const stopDrawing = () => {
         if (isDrawing) {
             setIsDrawing(false);
+            isDragging.current = false;
+            dragStartPos.current = null;
 
             // Save stroke for line eraser
             if (activeTool === 'pen' && currentStrokeRef.current.length > 1) {
