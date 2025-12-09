@@ -79,7 +79,7 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({ isDismissed, onDismiss 
                                 Confirm Model Download
                             </h2>
                             <p className="text-gray-600 dark:text-gray-400 mb-2 text-sm">
-                                The AI model will be downloaded to your browser's cache (approx 30MB).
+                                The AI models will be downloaded to your browser's cache (approx 90MB).
                                 This will only happen once.
                             </p>
                             <p className="text-gray-500 dark:text-gray-500 mb-6 text-xs italic">

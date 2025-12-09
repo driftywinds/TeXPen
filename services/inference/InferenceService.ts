@@ -104,6 +104,28 @@ export class InferenceService {
 
         const sessionOptions = getSessionOptions(device, dtype);
 
+        // Pre-download heavy model files using DownloadManager to support completion/resuming
+        const { downloadManager } = await import('../downloader/DownloadManager');
+        const commonFiles = [
+          'onnx/encoder_model.onnx',
+          'onnx/decoder_model_merged.onnx',
+        ];
+
+        for (const file of commonFiles) {
+          // Construct the standard HF URL
+          const fileUrl = `https://huggingface.co/${this.currentModelId}/resolve/main/${file}`;
+          try {
+            if (onProgress) onProgress(`Checking ${file}...`);
+            await downloadManager.downloadFile(fileUrl, (p) => {
+              const mb = (p.loaded / 1024 / 1024).toFixed(1);
+              const total = (p.total / 1024 / 1024).toFixed(1);
+              if (onProgress) onProgress(`Downloading ${file}: ${mb}/${total} MB`);
+            });
+          } catch (e) {
+            console.warn(`[InferenceService] Pre-download skipped for ${file}:`, e);
+          }
+        }
+
         // Load Tokenizer and Model in parallel
         const [tokenizer, model] = await Promise.all([
           AutoTokenizer.from_pretrained(this.currentModelId),

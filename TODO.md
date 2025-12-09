@@ -1,15 +1,13 @@
 Priority
 
 Bugs
-- [x] make inputs not attempt inference if not finished downloading
+- [ ] Fix very small expressions like $\epsilon$ appearing super small in candidates
 
 Behavior
-- [x] Add clear downloading message
 - [ ] Make tooltip work on mobile
 - [ ] Make model loading message work on mobile
 
 Features
-- [ ] Allow resuming downloads
 
 Visuals
 
