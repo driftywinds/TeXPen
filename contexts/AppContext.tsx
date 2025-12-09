@@ -36,6 +36,7 @@ export interface AppContextType {
     setCustomModelId: (id: string) => void;
 
     isLoadedFromCache: boolean;
+    isInitialized: boolean;
     showVisualDebugger: boolean;
     setShowVisualDebugger: (show: boolean) => void;
 
@@ -100,6 +101,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         userConfirmed,
         setUserConfirmed,
         isLoadedFromCache,
+        isInitialized,
     } = useInkModel(theme, quantization, provider, customModelId);
 
     // --- State Management for Separate Tabs ---
@@ -275,6 +277,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         customModelId,
         setCustomModelId,
         isLoadedFromCache,
+        isInitialized,
         showVisualDebugger,
         setShowVisualDebugger,
 

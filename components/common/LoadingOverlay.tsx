@@ -12,16 +12,21 @@ const LoadingOverlay: React.FC = () => {
     } = useAppContext();
 
     const [dismissed, setDismissed] = React.useState(false);
+    const { isInitialized } = useAppContext();
 
     const error = status === 'error' ? 'Failed to load models. Please check your internet connection and try again.' : undefined;
-    const needsConfirmation = !userConfirmed && !isLoadedFromCache;
+
+    // Only determine needsConfirmation if we are initialized.
+    // If NOT initialized, we don't know yet, so assume false to avoid flash.
+    const needsConfirmation = isInitialized && !userConfirmed && !isLoadedFromCache;
+
     const onConfirm = () => setUserConfirmed(true);
     const onClose = () => setDismissed(true);
 
     // Only show full overlay for initial permission/confirmation or errors.
     // We NO LONGER show it for standard model loading (handled by Main.tsx toast).
     // If dismissed, we also hide it (user can manually go to settings).
-    const showFullOverlay = !dismissed && ((status === 'error') || (!userConfirmed && !isLoadedFromCache));
+    const showFullOverlay = isInitialized && !dismissed && ((status === 'error') || needsConfirmation);
 
     if (!showFullOverlay) {
         return null;

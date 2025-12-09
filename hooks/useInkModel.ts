@@ -31,6 +31,8 @@ export function useInkModel(theme: 'light' | 'dark', quantization: string = INFE
   const [userConfirmed, setUserConfirmed] = useState(false);
   const [isLoadedFromCache, setIsLoadedFromCache] = useState(false);
 
+  const [isInitialized, setIsInitialized] = useState(false);
+
   // Check if the model is cached
   useEffect(() => {
     async function checkCache() {
@@ -47,6 +49,8 @@ export function useInkModel(theme: 'light' | 'dark', quantization: string = INFE
       } catch (error) {
         console.warn('Cache API is not available or failed:', error);
         setUserConfirmed(false);
+      } finally {
+        setIsInitialized(true);
       }
     }
     checkCache();
@@ -199,5 +203,6 @@ export function useInkModel(theme: 'light' | 'dark', quantization: string = INFE
     userConfirmed,
     setUserConfirmed,
     isLoadedFromCache,
+    isInitialized,
   };
 }
