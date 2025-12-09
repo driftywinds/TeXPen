@@ -89,12 +89,12 @@ export const SettingsMenu: React.FC = () => {
                     <div className="h-px bg-black/5 dark:bg-white/5 mx-2" />
 
                     {/* Quantization */}
-                    <div className="p-3">
+                    {/* <div className="p-3">
                         <div className="text-xs font-bold uppercase text-slate-400 dark:text-white/40 mb-2">Quantization</div>
                         <QuantizationSelector value={quantization} onChange={setQuantization} />
-                    </div>
+                    </div> */}
 
-                    <div className="h-px bg-black/5 dark:bg-white/5 mx-2" />
+                    {/* <div className="h-px bg-black/5 dark:bg-white/5 mx-2" /> */}
 
                     {/* Model ID - With Reset Option */}
                     <div className="p-3">
