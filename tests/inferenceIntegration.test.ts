@@ -101,7 +101,9 @@ describe('InferenceService Integration', () => {
 
   }, 120000); // 2 minute timeout
 
-  afterAll(async () => {
-    await inferenceService.dispose();
-  });
+  // We intentionally do NOT dispose the model after tests to allow reuse across the suite/watch mode
+  // if the worker persists. This optimizes performance by loading the model exactly once.
+  // afterAll(async () => {
+  //   await inferenceService.dispose();
+  // });
 });
