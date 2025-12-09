@@ -36,7 +36,6 @@ export class InferenceService {
     // Append our actual work to the mutex chain
     const work = async () => {
       const localGeneration = this.disposalGeneration;
-      // console.log('[DEBUG] Entering work. model:', !!this.model, 'currentModelId:', this.currentModelId, 'optId:', options.modelId);
 
       if (this.model && this.tokenizer) {
         // If the model is already loaded, but the quantization or device is different, we need to dispose and reload.
@@ -62,104 +61,31 @@ export class InferenceService {
         // CHECK GENERATION before starting heavy work
         if (this.disposalGeneration !== localGeneration) return;
 
-        // Check if we just refreshed OR a previous load was interrupted
-        const UNLOAD_KEY = '__texpen_unloading__';
-        const LOADING_KEY = '__texpen_loading__';
-
-        if (typeof sessionStorage !== 'undefined') {
-          const unloadTime = sessionStorage.getItem(UNLOAD_KEY);
-          const wasLoading = sessionStorage.getItem(LOADING_KEY);
-
-          // If previous page was in the middle of loading, we need a longer delay
-          // because the GPU is likely still processing the interrupted load
-          if (wasLoading) {
-            if (onProgress) onProgress('Waiting for GPU cleanup...');
-            await new Promise(resolve => setTimeout(resolve, 3000));
-            sessionStorage.removeItem(LOADING_KEY);
-          } else if (unloadTime) {
-            const elapsed = Date.now() - parseInt(unloadTime, 10);
-            if (elapsed < 3000) {
-              if (onProgress) onProgress('Cleaning up previous session...');
-              const waitTime = Math.min(1500, Math.max(500, 1500 - elapsed));
-              await new Promise(resolve => setTimeout(resolve, waitTime));
-            }
-          }
-          sessionStorage.removeItem(UNLOAD_KEY);
-
-          // Mark that we're starting to load
-          sessionStorage.setItem(LOADING_KEY, Date.now().toString());
-        }
+        await this.handleSessionWait(onProgress);
 
         const webgpuAvailable = await isWebGPUAvailable();
         let device = options.device || (webgpuAvailable ? 'webgpu' : 'wasm');
         let dtype = options.dtype || (webgpuAvailable ? INFERENCE_CONFIG.DEFAULT_QUANTIZATION : 'q8');
+
         // Update current ID if provided, otherwise keep existing (or default on first run)
         if (options.modelId) {
           this.currentModelId = options.modelId;
         }
 
-        this.dtype = dtype;
-
         if (onProgress) onProgress(`Loading model ${this.currentModelId} (${device}, ${dtype})...`);
 
         const sessionOptions = getSessionOptions(device, dtype);
 
-        // Pre-download heavy model files using DownloadManager to support completion/resuming
-        const { downloadManager } = await import('../downloader/DownloadManager');
-        const commonFiles = [
-          `onnx/${sessionOptions.encoder_model_file_name}`,
-          `onnx/${sessionOptions.decoder_model_file_name}`,
-        ];
-
-        for (const file of commonFiles) {
-          // Construct the standard HF URL
-          const fileUrl = `https://huggingface.co/${this.currentModelId}/resolve/main/${file}`;
-          try {
-            const fileName = file.split('/').pop() || file;
-            if (onProgress) onProgress(`Checking ${fileName}...`, 0);
-
-            await downloadManager.downloadFile(fileUrl, (p) => {
-              const mb = (p.loaded / 1024 / 1024).toFixed(1);
-              const total = (p.total / 1024 / 1024).toFixed(1);
-              const percentage = p.total > 0 ? Math.round((p.loaded / p.total) * 100) : 0;
-
-              if (onProgress) onProgress(`Downloading ${fileName}: ${mb}/${total} MB`, percentage);
-            });
-          } catch (e) {
-            console.warn(`[InferenceService] Pre-download skipped for ${file}:`, e);
-          }
-        }
+        // Pre-download heavy model files using DownloadManager
+        await this.preDownloadModels(this.currentModelId, sessionOptions, onProgress);
 
         // Load Tokenizer and Model in parallel
-        const [tokenizer, model] = await Promise.all([
+        const [tokenizer, modelResult] = await Promise.all([
           AutoTokenizer.from_pretrained(this.currentModelId),
-          (async () => {
-            try {
-              return await AutoModelForVision2Seq.from_pretrained(this.currentModelId, sessionOptions) as VisionEncoderDecoderModel;
-            } catch (loadError: any) {
-              // Check if this is a WebGPU buffer size / memory error
-              const isWebGPUMemoryError = loadError?.message?.includes('createBuffer') ||
-                loadError?.message?.includes('mappedAtCreation') ||
-                loadError?.message?.includes('too large for the implementation') ||
-                loadError?.message?.includes('GPUDevice');
-
-              if (isWebGPUMemoryError && device === 'webgpu') {
-                console.warn('[InferenceService] WebGPU buffer allocation failed, falling back to WASM...');
-                if (onProgress) onProgress('WebGPU memory limit hit. Switching to WASM...');
-
-                // Retry with WASM
-                device = 'wasm';
-                dtype = 'q8';
-                this.dtype = dtype;
-
-                const fallbackSessionOptions = getSessionOptions(device, dtype);
-                return await AutoModelForVision2Seq.from_pretrained(this.currentModelId, fallbackSessionOptions) as VisionEncoderDecoderModel;
-              } else {
-                throw loadError;
-              }
-            }
-          })()
+          this.loadModelWithFallback(this.currentModelId, device, dtype, onProgress)
         ]);
+
+        const { model, dtype: finalDtype } = modelResult;
 
         // CHECK GENERATION AGAIN
         if (this.disposalGeneration !== localGeneration) {
@@ -171,6 +97,7 @@ export class InferenceService {
 
         this.tokenizer = tokenizer;
         this.model = model;
+        this.dtype = finalDtype;
 
         // Clear loading flag - we're done
         try {
@@ -196,6 +123,98 @@ export class InferenceService {
       await this.initPromise;
     } finally {
       this.initPromise = null;
+    }
+  }
+
+  private async handleSessionWait(onProgress?: (status: string, progress?: number) => void): Promise<void> {
+    const UNLOAD_KEY = '__texpen_unloading__';
+    const LOADING_KEY = '__texpen_loading__';
+
+    if (typeof sessionStorage !== 'undefined') {
+      const unloadTime = sessionStorage.getItem(UNLOAD_KEY);
+      const wasLoading = sessionStorage.getItem(LOADING_KEY);
+
+      // If previous page was in the middle of loading, we need a longer delay
+      if (wasLoading) {
+        if (onProgress) onProgress('Waiting for GPU cleanup...');
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        sessionStorage.removeItem(LOADING_KEY);
+      } else if (unloadTime) {
+        const elapsed = Date.now() - parseInt(unloadTime, 10);
+        if (elapsed < 3000) {
+          if (onProgress) onProgress('Cleaning up previous session...');
+          const waitTime = Math.min(1500, Math.max(500, 1500 - elapsed));
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+      }
+      sessionStorage.removeItem(UNLOAD_KEY);
+
+      // Mark that we're starting to load
+      sessionStorage.setItem(LOADING_KEY, Date.now().toString());
+    }
+  }
+
+  private async preDownloadModels(modelId: string, sessionOptions: any, onProgress?: (status: string, progress?: number) => void): Promise<void> {
+    // Pre-download heavy model files using DownloadManager to support completion/resuming
+    const { downloadManager } = await import('../downloader/DownloadManager');
+    const commonFiles = [
+      `onnx/${sessionOptions.encoder_model_file_name}`,
+      `onnx/${sessionOptions.decoder_model_file_name}`,
+    ];
+
+    for (const file of commonFiles) {
+      // Construct the standard HF URL
+      const fileUrl = `https://huggingface.co/${modelId}/resolve/main/${file}`;
+      try {
+        const fileName = file.split('/').pop() || file;
+        if (onProgress) onProgress(`Checking ${fileName}...`, 0);
+
+        await downloadManager.downloadFile(fileUrl, (p) => {
+          const mb = (p.loaded / 1024 / 1024).toFixed(1);
+          const total = (p.total / 1024 / 1024).toFixed(1);
+          const percentage = p.total > 0 ? Math.round((p.loaded / p.total) * 100) : 0;
+
+          if (onProgress) onProgress(`Downloading ${fileName}: ${mb}/${total} MB`, percentage);
+        });
+      } catch (e) {
+        console.warn(`[InferenceService] Pre-download skipped for ${file}:`, e);
+      }
+    }
+  }
+
+  private async loadModelWithFallback(
+    modelId: string,
+    initialDevice: string,
+    initialDtype: string,
+    onProgress?: (status: string, progress?: number) => void
+  ): Promise<{ model: VisionEncoderDecoderModel, device: string, dtype: string }> {
+    let device = initialDevice;
+    let dtype = initialDtype;
+    let sessionOptions = getSessionOptions(device, dtype);
+
+    try {
+      const model = await AutoModelForVision2Seq.from_pretrained(modelId, sessionOptions) as VisionEncoderDecoderModel;
+      return { model, device, dtype };
+    } catch (loadError: any) {
+      // Check if this is a WebGPU buffer size / memory error
+      const isWebGPUMemoryError = loadError?.message?.includes('createBuffer') ||
+        loadError?.message?.includes('mappedAtCreation') ||
+        loadError?.message?.includes('too large for the implementation') ||
+        loadError?.message?.includes('GPUDevice');
+
+      if (isWebGPUMemoryError && device === 'webgpu') {
+        console.warn('[InferenceService] WebGPU buffer allocation failed, falling back to WASM...');
+        if (onProgress) onProgress('WebGPU memory limit hit. Switching to WASM...');
+
+        // Retry with WASM
+        device = 'wasm';
+        dtype = 'q8';
+        sessionOptions = getSessionOptions(device, dtype);
+        const model = await AutoModelForVision2Seq.from_pretrained(modelId, sessionOptions) as VisionEncoderDecoderModel;
+        return { model, device, dtype };
+      } else {
+        throw loadError;
+      }
     }
   }
 

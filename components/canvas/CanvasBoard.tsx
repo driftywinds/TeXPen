@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { ToolType, Point, Stroke } from '../../types/canvas';
+import { isPointNearStroke, isStrokeInRect, splitStrokes } from '../../utils/geometry';
 
 interface CanvasBoardProps {
     onStrokeEnd: () => void;
@@ -257,99 +258,7 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
         };
     };
 
-    // Check if a point is near a stroke segment
-    const isPointNearStroke = (point: Point, stroke: Stroke, threshold: number): boolean => {
-        for (let i = 0; i < stroke.points.length - 1; i++) {
-            const a = stroke.points[i];
-            const b = stroke.points[i + 1];
 
-            const l2 = Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2);
-            if (l2 === 0) {
-                if (Math.sqrt(Math.pow(point.x - a.x, 2) + Math.pow(point.y - a.y, 2)) < threshold) {
-                    return true;
-                }
-                continue;
-            }
-
-            let t = ((point.x - a.x) * (b.x - a.x) + (point.y - a.y) * (b.y - a.y)) / l2;
-            t = Math.max(0, Math.min(1, t));
-
-            const proj = {
-                x: a.x + t * (b.x - a.x),
-                y: a.y + t * (b.y - a.y)
-            };
-
-            const dist = Math.sqrt(Math.pow(point.x - proj.x, 2) + Math.pow(point.y - proj.y, 2));
-            if (dist < threshold) {
-                return true;
-            }
-        }
-        return false;
-    };
-
-    const isStrokeInRect = (stroke: Stroke, rect: { x: number, y: number, w: number, h: number }): boolean => {
-        // Simple bounding box check first
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        stroke.points.forEach(p => {
-            minX = Math.min(minX, p.x);
-            minY = Math.min(minY, p.y);
-            maxX = Math.max(maxX, p.x);
-            maxY = Math.max(maxY, p.y);
-        });
-
-        // Check if bounding boxes overlap
-        if (minX > rect.x + rect.w || maxX < rect.x || minY > rect.y + rect.h || maxY < rect.y) {
-            return false;
-        }
-
-        // More granular check: any point inside?
-        // This is strictly "containment" or "interesect"? 
-        // Typically box selection selects if ANY part touches.
-        // Bounding box overlap is usually good enough for "touching".
-        // Let's stick to bounding box overlap for efficiency.
-        return true;
-    };
-
-    // Split strokes based on erasure point
-    const splitStrokes = (strokes: Stroke[], erasePoint: Point, radius: number): Stroke[] => {
-        const thresholdSq = radius * radius;
-        const newStrokes: Stroke[] = [];
-
-        strokes.forEach(stroke => {
-            let currentPoints: Point[] = [];
-            let modified = false;
-
-            stroke.points.forEach((p, i) => {
-                const distSq = Math.pow(p.x - erasePoint.x, 2) + Math.pow(p.y - erasePoint.y, 2);
-
-                if (distSq > thresholdSq) {
-                    currentPoints.push(p);
-                } else {
-                    modified = true;
-                    // End current segment if we hit the eraser
-                    if (currentPoints.length > 1) { // Filter single points
-                        newStrokes.push({ ...stroke, points: [...currentPoints] });
-                    }
-                    currentPoints = [];
-                }
-            });
-
-            // Push final segment
-            if (currentPoints.length > 1) {
-                newStrokes.push({ ...stroke, points: [...currentPoints] });
-            } else if (!modified && currentPoints.length > 0) {
-                // Determine if we kept the whole stroke (single point edge case or just no collision)
-                // Actually if !modified, we should keep it.
-                // But logic above empties currentPoints on collision.
-                // If we are here and !modified, currentPoints == stroke.points
-                // So checking currentPoints.length > 1 handles it mostly, 
-                // but if stroke was 1 point? (Technically not a line, but generic handling)
-                // Let's rely on the iteration.
-            }
-        });
-
-        return newStrokes;
-    };
 
     const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
         setIsDrawing(true);
