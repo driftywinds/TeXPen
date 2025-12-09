@@ -30,6 +30,10 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
     const dragStartPos = useRef<{ x: number; y: number } | null>(null);
     const isDragging = useRef<boolean>(false);
 
+    // Box Selection State
+    const selectionBoxRef = useRef<{ start: Point; current: Point } | null>(null);
+    const isSelecting = useRef<boolean>(false);
+
     const contentCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
     // Setup canvas size and style
@@ -120,28 +124,51 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
                 ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
             }
             ctx.stroke();
+        });
 
-            // Draw selection highlight
-            if (selectedStrokeIndices.includes(index)) {
+        // Draw unified selection highlight
+        if (selectedStrokeIndices.length > 0) {
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+            selectedStrokeIndices.forEach(index => {
+                const stroke = strokesRef.current[index];
+                if (stroke) {
+                    stroke.points.forEach(p => {
+                        minX = Math.min(minX, p.x);
+                        minY = Math.min(minY, p.y);
+                        maxX = Math.max(maxX, p.x);
+                        maxY = Math.max(maxY, p.y);
+                    });
+                }
+            });
+
+            if (minX !== Infinity) {
                 ctx.save();
                 ctx.strokeStyle = '#3b82f6'; // Blue color for selection
                 ctx.lineWidth = 1;
                 ctx.setLineDash([5, 5]);
 
-                // Calculate bounding box
-                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-                stroke.points.forEach(p => {
-                    minX = Math.min(minX, p.x);
-                    minY = Math.min(minY, p.y);
-                    maxX = Math.max(maxX, p.x);
-                    maxY = Math.max(maxY, p.y);
-                });
-
                 const padding = 5;
                 ctx.strokeRect(minX - padding, minY - padding, (maxX - minX) + padding * 2, (maxY - minY) + padding * 2);
                 ctx.restore();
             }
-        });
+        }
+
+        // Draw selection box (on top of everything)
+        if (selectionBoxRef.current && isSelecting.current) {
+            ctx.save();
+            ctx.strokeStyle = '#3b82f6';
+            ctx.fillStyle = 'rgba(59, 130, 246, 0.1)';
+            ctx.lineWidth = 1;
+            const bgX = Math.min(selectionBoxRef.current.start.x, selectionBoxRef.current.current.x);
+            const bgY = Math.min(selectionBoxRef.current.start.y, selectionBoxRef.current.current.y);
+            const bgW = Math.abs(selectionBoxRef.current.current.x - selectionBoxRef.current.start.x);
+            const bgH = Math.abs(selectionBoxRef.current.current.y - selectionBoxRef.current.start.y);
+
+            ctx.fillRect(bgX, bgY, bgW, bgH);
+            ctx.strokeRect(bgX, bgY, bgW, bgH);
+            ctx.restore();
+        }
 
         // Copy to visible canvas
         const visibleCanvas = canvasRef.current;
@@ -260,6 +287,29 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
         return false;
     };
 
+    const isStrokeInRect = (stroke: Stroke, rect: { x: number, y: number, w: number, h: number }): boolean => {
+        // Simple bounding box check first
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        stroke.points.forEach(p => {
+            minX = Math.min(minX, p.x);
+            minY = Math.min(minY, p.y);
+            maxX = Math.max(maxX, p.x);
+            maxY = Math.max(maxY, p.y);
+        });
+
+        // Check if bounding boxes overlap
+        if (minX > rect.x + rect.w || maxX < rect.x || minY > rect.y + rect.h || maxY < rect.y) {
+            return false;
+        }
+
+        // More granular check: any point inside?
+        // This is strictly "containment" or "interesect"? 
+        // Typically box selection selects if ANY part touches.
+        // Bounding box overlap is usually good enough for "touching".
+        // Let's stick to bounding box overlap for efficiency.
+        return true;
+    };
+
     // Split strokes based on erasure point
     const splitStrokes = (strokes: Stroke[], erasePoint: Point, radius: number): Stroke[] => {
         const thresholdSq = radius * radius;
@@ -327,7 +377,10 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
                     dragStartPos.current = scaledPos;
                 }
             } else {
-                // Clicked on empty space
+                // Clicked on empty space -> Start Selection Box
+                isSelecting.current = true;
+                selectionBoxRef.current = { start: scaledPos, current: scaledPos };
+                // Also clear previous selection
                 setSelectedStrokeIndices([]);
                 isDragging.current = false;
                 dragStartPos.current = null;
@@ -406,6 +459,30 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
                 }
             });
             redrawStrokes();
+        } else if (activeTool === 'select' && isSelecting.current && selectionBoxRef.current) {
+            // Box Selection Logic
+            selectionBoxRef.current.current = scaledPos;
+
+            // Real-time selection update
+            const startStr = selectionBoxRef.current.start;
+            const curStr = selectionBoxRef.current.current;
+
+            const rect = {
+                x: Math.min(startStr.x, curStr.x),
+                y: Math.min(startStr.y, curStr.y),
+                w: Math.abs(curStr.x - startStr.x),
+                h: Math.abs(curStr.y - startStr.y)
+            };
+
+            const newSelectedIndices: number[] = [];
+            strokesRef.current.forEach((stroke, index) => {
+                if (isStrokeInRect(stroke, rect)) {
+                    newSelectedIndices.push(index);
+                }
+            });
+
+            setSelectedStrokeIndices(newSelectedIndices);
+            redrawStrokes();
         }
 
         lastPos.current = scaledPos;
@@ -429,6 +506,12 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
             setIsDrawing(false);
             isDragging.current = false;
             dragStartPos.current = null;
+
+            if (isSelecting.current) {
+                isSelecting.current = false;
+                selectionBoxRef.current = null;
+                redrawStrokes();
+            }
 
             // Save stroke for line eraser
             if (activeTool === 'pen' && currentStrokeRef.current.length > 1) {

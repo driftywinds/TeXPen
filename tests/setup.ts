@@ -1,4 +1,4 @@
-import { expect, afterEach } from 'vitest';
+import { expect, afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import * as matchers from '@testing-library/jest-dom/matchers';
 import { createCanvas, loadImage, Image, ImageData } from '@napi-rs/canvas';
@@ -171,3 +171,40 @@ CanvasRenderingContext2DPrototype.drawImage = function (image: any, ...args: any
   }
   return originalDrawImage.call(this, image, ...args);
 };
+
+// Mock caches
+const mockCacheStorage = {
+  open: vi.fn().mockResolvedValue({
+    match: vi.fn().mockResolvedValue(null),
+    put: vi.fn(),
+    add: vi.fn(),
+    addAll: vi.fn(),
+    keys: vi.fn().mockResolvedValue([]),
+    delete: vi.fn(),
+  }),
+  match: vi.fn().mockResolvedValue(null),
+  has: vi.fn().mockResolvedValue(false),
+  delete: vi.fn().mockResolvedValue(true),
+  keys: vi.fn().mockResolvedValue([]),
+};
+(global as any).caches = mockCacheStorage;
+
+// Mock idb library
+vi.mock('idb', () => ({
+  openDB: vi.fn().mockResolvedValue({
+    get: vi.fn().mockResolvedValue(undefined),
+    put: vi.fn().mockResolvedValue(undefined),
+    delete: vi.fn().mockResolvedValue(undefined),
+    clear: vi.fn().mockResolvedValue(undefined),
+    getAll: vi.fn().mockResolvedValue([]),
+    transaction: vi.fn().mockReturnValue({
+      objectStore: vi.fn().mockReturnValue({
+        get: vi.fn().mockResolvedValue(undefined),
+        put: vi.fn().mockResolvedValue(undefined),
+        getAll: vi.fn().mockResolvedValue([]),
+      }),
+      done: Promise.resolve(),
+    }),
+    close: vi.fn(),
+  }),
+}));

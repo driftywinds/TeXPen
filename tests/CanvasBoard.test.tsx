@@ -220,6 +220,80 @@ describe('CanvasBoard Selection & Move', () => {
         // Should NOT draw selection box anymore
         // Note: Canvas redraws everything. If selection is cleared, strokeRect won't be called.
         // But redrawStrokes is called.
-        expect(mockCtx.strokeRect).not.toHaveBeenCalled();
+        // But redrawStrokes is called.
+        // With box selection, clicking empty space starts a box (0x0 size)
+        expect(mockCtx.strokeRect).toHaveBeenCalledWith(100, 100, 0, 0);
+        // And importantly, it should NOT be called for the previously selected stroke (10,10)
+        expect(mockCtx.strokeRect).not.toHaveBeenCalledWith(expect.objectContaining({
+            x: expect.closeTo(10, 5) // Loose check for the stroke pos if we were checking args, 
+            // but vitest check is usually exact args. 
+            // Let's just check call count? 
+            // If it was selected, it would be called twice (once for box, once for stroke).
+        }));
+        expect(mockCtx.strokeRect).toHaveBeenCalledTimes(1);
+    });
+
+    it('starts box selection when dragging on empty space', () => {
+        const strokesRef = { current: [] as Stroke[] };
+        const onStrokeEnd = vi.fn();
+
+        const { container } = render(
+            <CanvasBoard
+                activeTool="select"
+                theme="light"
+                onStrokeEnd={onStrokeEnd}
+                refCallback={() => { }}
+                contentRefCallback={() => { }}
+                strokesRef={strokesRef}
+            />
+        );
+        const canvas = container.querySelector('canvas')!;
+
+        // 1. Mouse down on empty space (100, 100)
+        fireEvent.mouseDown(canvas, { clientX: 100, clientY: 100 });
+
+        // 2. Drag to (200, 200)
+        fireEvent.mouseMove(canvas, { clientX: 200, clientY: 200 });
+
+        // Verify selection box drawing
+        // Should draw fillRect and strokeRect for the box
+        expect(mockCtx.fillRect).toHaveBeenCalled();
+        expect(mockCtx.strokeRect).toHaveBeenCalled();
+    });
+
+    it('selects strokes within the box', () => {
+        const strokesRef = { current: [] as Stroke[] };
+
+        // Stroke at (50, 50) to (60, 60)
+        strokesRef.current = [{
+            points: [{ x: 50, y: 50 }, { x: 60, y: 60 }],
+            tool: 'pen',
+            color: '#000',
+            width: 3
+        }];
+
+        const { container } = render(
+            <CanvasBoard
+                activeTool="select"
+                theme="light"
+                onStrokeEnd={vi.fn()}
+                refCallback={() => { }}
+                contentRefCallback={() => { }}
+                strokesRef={strokesRef}
+            />
+        );
+        const canvas = container.querySelector('canvas')!;
+
+        mockCtx.strokeRect.mockClear();
+
+        // 1. Box select from (40, 40) to (70, 70) - Encloses the stroke
+        fireEvent.mouseDown(canvas, { clientX: 40, clientY: 40 });
+        fireEvent.mouseMove(canvas, { clientX: 70, clientY: 70 });
+
+        // 2. Release to finalize
+        fireEvent.mouseUp(canvas);
+
+        // Verify stroke is highlighted
+        expect(mockCtx.strokeRect).toHaveBeenCalled();
     });
 });

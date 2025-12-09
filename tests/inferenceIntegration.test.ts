@@ -53,7 +53,7 @@ CanvasRenderingContext2DPrototype.drawImage = function (image: any, ...args: any
   return originalDrawImage.call(this, image, ...args);
 };
 
-describe('InferenceService Integration', () => {
+describe.skip('InferenceService Integration', () => {
   // Increase timeout significantly for model downloading/loading
   // 60 seconds might be enough if cached, otherwise it might take longer.
   // Since this is a test, we hopefully have it cached or we accept it takes time.

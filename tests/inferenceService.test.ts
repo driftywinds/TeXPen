@@ -31,6 +31,21 @@ vi.mock('../services/inference/beamSearch', () => ({
   beamSearch: (...args: any[]) => mockBeamSearch(...args),
 }));
 
+vi.mock('../services/downloader/DownloadManager', () => {
+  const mockInstance = {
+    downloadFile: vi.fn().mockResolvedValue('/mock/path'),
+    isCached: vi.fn().mockResolvedValue(true),
+    getDownloadStatus: vi.fn().mockReturnValue({ progress: 100 }),
+    cancelDownload: vi.fn(),
+  };
+  return {
+    DownloadManager: {
+      getInstance: () => mockInstance,
+    },
+    downloadManager: mockInstance,
+  };
+});
+
 describe('InferenceService', () => {
   let service: InferenceService;
 
