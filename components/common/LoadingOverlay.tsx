@@ -15,6 +15,7 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({ isDismissed, onDismiss 
         setUserConfirmed,
         isLoadedFromCache,
         openSettings,
+        quantization,
     } = useAppContext();
 
     const { isInitialized } = useAppContext();
@@ -26,6 +27,16 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({ isDismissed, onDismiss 
     const needsConfirmation = isInitialized && !userConfirmed && !isLoadedFromCache;
 
     const onConfirm = () => setUserConfirmed(true);
+
+    const getEstimatedSize = (q: string) => {
+        switch (q) {
+            case 'fp16': return '~730MB';
+            case 'q8': return '~300MB';
+            case 'int8': return '~300MB';
+            default: return '~1.2GB'; // fp32
+        }
+    };
+    const downloadSize = getEstimatedSize(quantization || 'fp32');
 
     // Only show full overlay for initial permission/confirmation or errors.
     // We NO LONGER show it for standard model loading (handled by Main.tsx toast).
@@ -79,7 +90,7 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({ isDismissed, onDismiss 
                                 Confirm Model Download
                             </h2>
                             <p className="text-gray-600 dark:text-gray-400 mb-2 text-sm">
-                                The AI models will be downloaded to your browser's cache (approx 90MB).
+                                The AI models will be downloaded to your browser's cache ({downloadSize}).
                                 This will only happen once.
                             </p>
                             <p className="text-gray-500 dark:text-gray-500 mb-6 text-xs italic">

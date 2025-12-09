@@ -40,6 +40,12 @@ export function getSessionOptions(device: string, dtype: string) {
     };
   }
   // For fp32 (default), we rely on standard naming or explicit defaults if needed.
+  if (!sessionOptions.encoder_model_file_name) {
+    sessionOptions.encoder_model_file_name = 'encoder_model.onnx';
+  }
+  if (!sessionOptions.decoder_model_file_name) {
+    sessionOptions.decoder_model_file_name = 'decoder_model_merged.onnx';
+  }
 
   return sessionOptions;
 }

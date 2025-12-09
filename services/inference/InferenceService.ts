@@ -107,19 +107,23 @@ export class InferenceService {
         // Pre-download heavy model files using DownloadManager to support completion/resuming
         const { downloadManager } = await import('../downloader/DownloadManager');
         const commonFiles = [
-          'onnx/encoder_model.onnx',
-          'onnx/decoder_model_merged.onnx',
+          `onnx/${sessionOptions.encoder_model_file_name}`,
+          `onnx/${sessionOptions.decoder_model_file_name}`,
         ];
 
         for (const file of commonFiles) {
           // Construct the standard HF URL
           const fileUrl = `https://huggingface.co/${this.currentModelId}/resolve/main/${file}`;
           try {
-            if (onProgress) onProgress(`Checking ${file}...`);
+            const fileName = file.split('/').pop() || file;
+            if (onProgress) onProgress(`Checking ${fileName}...`, 0);
+
             await downloadManager.downloadFile(fileUrl, (p) => {
               const mb = (p.loaded / 1024 / 1024).toFixed(1);
               const total = (p.total / 1024 / 1024).toFixed(1);
-              if (onProgress) onProgress(`Downloading ${file}: ${mb}/${total} MB`);
+              const percentage = p.total > 0 ? Math.round((p.loaded / p.total) * 100) : 0;
+
+              if (onProgress) onProgress(`Downloading ${fileName}: ${mb}/${total} MB`, percentage);
             });
           } catch (e) {
             console.warn(`[InferenceService] Pre-download skipped for ${file}:`, e);
