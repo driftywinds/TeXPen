@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { DownloadManager } from '../services/downloader/DownloadManager';
-import { getDB, clearPartialDownload } from '../services/downloader/db';
+import { getPartialDownload } from '../services/downloader/db';
 
 // Mock DB
 vi.mock('../services/downloader/db', () => ({
@@ -11,15 +11,15 @@ vi.mock('../services/downloader/db', () => ({
 }));
 
 // Access mocked functions
-import { saveChunk, getPartialDownload, clearPartialDownload as mockClearPartial } from '../services/downloader/db';
+import { saveChunk, getPartialDownload as mockGetPartial, clearPartialDownload as mockClearPartial } from '../services/downloader/db';
 
 describe('DownloadManager', () => {
   let downloadManager: DownloadManager;
+  let mockCachePut: any;
+  let mockCacheMatch: any;
+  let mockCacheDelete: any;
 
   beforeEach(() => {
-    // Reset singleton if possible, or just ignore since we mock dependencies
-    // Since DownloadManager is a singleton, we might need to access the private instance or just rely on state reset
-    // For this test we can just get the instance. State like 'abortControllers' is internal.
     downloadManager = DownloadManager.getInstance();
     vi.clearAllMocks();
 
@@ -27,10 +27,15 @@ describe('DownloadManager', () => {
     global.fetch = vi.fn();
 
     // Mock caches
+    mockCachePut = vi.fn().mockResolvedValue(undefined);
+    mockCacheMatch = vi.fn().mockResolvedValue(null);
+    mockCacheDelete = vi.fn().mockResolvedValue(true);
+
     (global as any).caches = {
       open: vi.fn().mockResolvedValue({
-        match: vi.fn().mockResolvedValue(null),
-        put: vi.fn().mockResolvedValue(undefined),
+        match: mockCacheMatch,
+        put: mockCachePut,
+        delete: mockCacheDelete,
       }),
     };
   });
@@ -39,7 +44,7 @@ describe('DownloadManager', () => {
     vi.resetAllMocks();
   });
 
-  it('should download a file and save chunks sequentially', async () => {
+  it('should download a file, buffer small chunks, and save complete file to cache', async () => {
     const mockUrl = 'https://example.com/model.onnx';
     const mockContent = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     const mockStream = new ReadableStream({
@@ -58,38 +63,49 @@ describe('DownloadManager', () => {
 
     await downloadManager.downloadFile(mockUrl);
 
-    // Verify saveChunk called for each chunk
-    expect(saveChunk).toHaveBeenCalledTimes(2);
+    // Verify buffering: 10 bytes < 50MB threshold, so saveChunk should only be called ONCE at the end (flush)
+    // or if the implementation saves on done.
+    expect(saveChunk).toHaveBeenCalledTimes(1);
 
-    // Check call arguments: url, blob, totalSize, chunkIndex, etag
-    expect(saveChunk).toHaveBeenNthCalledWith(1, mockUrl, expect.any(Blob), 10, 0, 'test-etag');
-    expect(saveChunk).toHaveBeenNthCalledWith(2, mockUrl, expect.any(Blob), 10, 1, 'test-etag'); // Index must increment
+    // Check call arguments for index 0 (merged)
+    expect(saveChunk).toHaveBeenCalledWith(mockUrl, expect.any(Blob), 10, 0, 'test-etag');
+
+    // CRITICAL: Verify cache.put received the full blob
+    expect(mockCachePut).toHaveBeenCalledTimes(1);
+    const [putUrl, putResponse] = mockCachePut.mock.calls[0];
+    expect(putUrl).toBe(mockUrl);
+
+    // Verify response blob size
+    const blob = await putResponse.blob();
+    expect(blob.size).toBe(10);
+    // This assertion failed previously (was 0) which caused the bug.
   });
 
-  it('should resume from generic partial state', async () => {
+  it('should resume from partial state and append new chunks', async () => {
     const mockUrl = 'https://example.com/large.bin';
+    const existingData = new Uint8Array(50).fill(1);
 
     // Mock existing partial state
-    (getPartialDownload as any).mockResolvedValue({
+    (mockGetPartial as any).mockResolvedValue({
       url: mockUrl,
       downloadedBytes: 50,
-      contentLength: 100,
-      chunks: [new Blob([new Uint8Array(50)])], // Simulated existing chunks
+      totalBytes: 100,
+      chunks: [new Blob([existingData])], // 50 bytes existing
       chunkCount: 1
     });
 
     // Mock fetch to return remaining 50 bytes
     const mockStream = new ReadableStream({
       start(controller) {
-        controller.enqueue(new Uint8Array(50));
+        controller.enqueue(new Uint8Array(50).fill(2));
         controller.close();
       }
     });
 
     (global.fetch as any).mockResolvedValue({
       ok: true,
-      headers: new Headers({ 'Content-Length': '50', 'Etag': 'test-etag' }), // Server returns length of *content sent* usually with 206
-      status: 206,
+      headers: new Headers({ 'Content-Length': '50', 'Etag': 'test-etag' }),
+      status: 206, // Partial Content
       body: mockStream,
     });
 
@@ -101,6 +117,81 @@ describe('DownloadManager', () => {
     }));
 
     // Should save new chunk at index 1 (since 0 existed)
+    // It is < 50MB so it will be flushed at the end
     expect(saveChunk).toHaveBeenCalledWith(mockUrl, expect.any(Blob), 100, 1, 'test-etag');
+
+    // Verify final cache put has 100 bytes (50 existing + 50 new)
+    expect(mockCachePut).toHaveBeenCalledTimes(1);
+    const response = mockCachePut.mock.calls[0][1];
+    const blob = await response.blob();
+    expect(blob.size).toBe(100);
+  });
+
+  it('should detect and heal corrupted (size mismatch) cache', async () => {
+    const mockUrl = 'https://example.com/corrupt.file';
+    const mockSize = 100;
+
+    // Mock cache returning a BAD response
+    // Content-Length says 100, but Blob size is 50 (truncated)
+    const badBlob = new Blob([new Uint8Array(50)]);
+    const badResponse = new Response(badBlob, {
+      headers: { 'Content-Length': '100' }
+    });
+
+    mockCacheMatch.mockResolvedValue(badResponse);
+
+    // Prepare fresh download mock
+    const mockStream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new Uint8Array(100)); // Full correct file
+        controller.close();
+      }
+    });
+    (global.fetch as any).mockResolvedValue({
+      ok: true,
+      headers: new Headers({ 'Content-Length': '100' }),
+      body: mockStream,
+    });
+
+    await downloadManager.downloadFile(mockUrl);
+
+    // Expect delete to be called for the bad cache
+    expect(mockCacheDelete).toHaveBeenCalledWith(mockUrl);
+
+    // Expect re-download (fetch called)
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(mockCachePut).toHaveBeenCalledTimes(1);
+  });
+
+  it('should detect and heal empty (0-byte) cache', async () => {
+    const mockUrl = 'https://example.com/empty.file';
+
+    // Mock cache returning an EMPTY response (the bug case)
+    const emptyBlob = new Blob([]);
+    const emptyResponse = new Response(emptyBlob, {
+      headers: { 'Content-Length': '100' }
+    });
+
+    mockCacheMatch.mockResolvedValue(emptyResponse);
+
+    // Mock successful re-download
+    const mockStream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new Uint8Array(100));
+        controller.close();
+      }
+    });
+    (global.fetch as any).mockResolvedValue({
+      ok: true,
+      headers: new Headers({ 'Content-Length': '100' }),
+      body: mockStream,
+    });
+
+    await downloadManager.downloadFile(mockUrl);
+
+    // Expect delete
+    expect(mockCacheDelete).toHaveBeenCalledWith(mockUrl);
+    // Expect re-download
+    expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 });
