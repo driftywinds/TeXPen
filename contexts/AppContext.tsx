@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { ModelConfig, Candidate, HistoryItem } from '../types';
 import { useInkModel } from '../hooks/useInkModel';
 import { useThemeContext } from './ThemeContext';
@@ -183,8 +183,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const [activeInferenceTab, setActiveInferenceTab] = useState<'draw' | 'upload' | null>(null);
 
     // Wrappers for inference to update the correct state
+    // Track active requests count
+    const activeRequestsRef = useRef<{ draw: number; upload: number }>({ draw: 0, upload: 0 });
+
+    // Wrappers for inference to update the correct state
     const infer = async (canvas: HTMLCanvasElement) => {
+        activeRequestsRef.current.draw += 1;
         setActiveInferenceTab('draw');
+
         try {
             // Typically called from 'draw' tab
             const result = await modelInfer(canvas);
@@ -200,12 +206,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
             return null;
         } finally {
-            setActiveInferenceTab(null);
+            activeRequestsRef.current.draw -= 1;
+            // Only clear if no active requests left for this tab
+            if (activeRequestsRef.current.draw === 0) {
+                // Check if upload is active? 
+                // Actually activeInferenceTab is a simple string. 
+                // If draw is 0, we can unset it IF it was set to draw.
+                setActiveInferenceTab(prev => prev === 'draw' ? null : prev);
+            }
         }
     };
 
     const inferFromUrl = async (url: string) => {
+        activeRequestsRef.current.upload += 1;
         setActiveInferenceTab('upload');
+
         try {
             // Typically called from 'upload' tab
             const result = await modelInferFromUrl(url);
@@ -221,7 +236,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
             return null;
         } finally {
-            setActiveInferenceTab(null);
+            activeRequestsRef.current.upload -= 1;
+            if (activeRequestsRef.current.upload === 0) {
+                setActiveInferenceTab(prev => prev === 'upload' ? null : prev);
+            }
         }
     };
 
