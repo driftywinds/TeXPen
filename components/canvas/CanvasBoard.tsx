@@ -1,10 +1,11 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { ToolType, Point, Stroke } from '../../types/canvas';
-import { isPointNearStroke, splitStrokes, isPointInBounds, isStrokeInPolygon } from '../../utils/geometry';
+import { isPointNearStroke, splitStrokes, isPointInBounds, isStrokeInPolygon, isStrokeInRect } from '../../utils/geometry';
 import {
     drawAllStrokes,
     drawSelectionHighlight,
     drawLassoPath,
+    drawSelectionBox,
     copyToCanvas,
     getSelectionBounds
 } from '../../utils/canvasRendering';
@@ -48,6 +49,10 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
     // Lasso Selection State
     const lassoPointsRef = useRef<Point[]>([]);
     const isLassoSelecting = useRef<boolean>(false);
+
+    // Rect Selection State
+    const rectStartPos = useRef<{ x: number; y: number } | null>(null);
+    const isRectSelecting = useRef<boolean>(false);
 
     const contentCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -139,6 +144,16 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
             drawLassoPath(ctx, lassoPointsRef.current);
         }
 
+        // Draw selection rect
+        if (isRectSelecting.current && rectStartPos.current && currentPos.current) {
+            // currentPos is screen coords, need scaled
+            const dpr = window.devicePixelRatio || 1;
+            // We can't use currentPos.current directly here if it's not scaled or if it's null
+            // But processDraw updates lastPos. 
+            // Let's use lastPos which is scaled.
+            drawSelectionBox(ctx, rectStartPos.current, lastPos.current);
+        }
+
         // Copy to visible canvas
         const visibleCanvas = canvasRef.current;
         if (visibleCanvas) {
@@ -152,7 +167,7 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
 
     // Clear selection when switching away from Select tool
     useEffect(() => {
-        if (activeTool !== 'select') {
+        if (activeTool !== 'select-rect' && activeTool !== 'select-lasso') {
             setSelectedStrokeIndices([]);
         }
     }, [activeTool]);
@@ -266,7 +281,7 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
 
         if (activeTool === 'pen') {
             currentStrokeRef.current = [scaledPos];
-        } else if (activeTool === 'select') {
+        } else if (activeTool === 'select-rect' || activeTool === 'select-lasso') {
             // First, check if clicking inside existing selection bounding box
             if (selectedStrokeIndices.length > 0) {
                 const bounds = getSelectionBounds(strokesRef.current, selectedStrokeIndices);
@@ -294,13 +309,21 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
                     dragStartPos.current = scaledPos;
                 }
             } else {
-                // Clicked on empty space -> Start Lasso Selection
-                isLassoSelecting.current = true;
-                lassoPointsRef.current = [scaledPos];
-                // Also clear previous selection
+                // Clicked on empty space
+
+                // Clear previous selection
                 setSelectedStrokeIndices([]);
                 isDragging.current = false;
                 dragStartPos.current = null;
+
+                if (activeTool === 'select-lasso') {
+                    isLassoSelecting.current = true;
+                    lassoPointsRef.current = [scaledPos];
+                } else {
+                    // Rect Selection
+                    isRectSelecting.current = true;
+                    rectStartPos.current = scaledPos;
+                }
             }
         }
 
@@ -356,7 +379,7 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
             if (strokesRef.current.length !== beforeCount) {
                 redrawStrokes();
             }
-        } else if (activeTool === 'select' && isDragging.current && dragStartPos.current) {
+        } else if ((activeTool === 'select-rect' || activeTool === 'select-lasso') && isDragging.current && dragStartPos.current) {
             // Move Logic
             const dx = scaledPos.x - lastPos.current.x;
             const dy = scaledPos.y - lastPos.current.y;
@@ -372,7 +395,7 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
                 }
             });
             redrawStrokes();
-        } else if (activeTool === 'select' && isLassoSelecting.current) {
+        } else if (activeTool === 'select-lasso' && isLassoSelecting.current) {
             // Lasso Selection Logic
             lassoPointsRef.current.push(scaledPos);
 
@@ -388,6 +411,35 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
             // but for high freq we should check equality first.
             // React state updates are batched, but might be too frequent.
             // For now, let's trust React optimization or we could throttle this specific update.
+            setSelectedStrokeIndices((prev) => {
+                if (prev.length === newSelectedIndices.length && prev.every((val, index) => val === newSelectedIndices[index])) {
+                    return prev;
+                }
+                return newSelectedIndices;
+            });
+
+            redrawStrokes();
+        } else if (activeTool === 'select-rect' && isRectSelecting.current && rectStartPos.current) {
+            // Rect Selection Logic
+
+            // Real-time selection update
+            const newSelectedIndices: number[] = [];
+
+            // Calculate normalized rect
+            const x = Math.min(rectStartPos.current.x, scaledPos.x);
+            const y = Math.min(rectStartPos.current.y, scaledPos.y);
+            const w = Math.abs(scaledPos.x - rectStartPos.current.x);
+            const h = Math.abs(scaledPos.y - rectStartPos.current.y);
+
+            const rect = { x, y, w, h };
+
+            strokesRef.current.forEach((stroke, index) => {
+                if (isStrokeInRect(stroke, rect)) {
+                    newSelectedIndices.push(index);
+                }
+            });
+
+            // Optimize state updates
             setSelectedStrokeIndices((prev) => {
                 if (prev.length === newSelectedIndices.length && prev.every((val, index) => val === newSelectedIndices[index])) {
                     return prev;
@@ -425,6 +477,12 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
             if (isLassoSelecting.current) {
                 isLassoSelecting.current = false;
                 lassoPointsRef.current = [];
+                redrawStrokes();
+            }
+
+            if (isRectSelecting.current) {
+                isRectSelecting.current = false;
+                rectStartPos.current = null;
                 redrawStrokes();
             }
 

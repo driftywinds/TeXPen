@@ -7,7 +7,10 @@ import {
     LineIcon,
     UndoIcon,
     RedoIcon,
-    SelectIcon
+
+    SelectIcon,
+    RectSelectIcon,
+    LassoSelectIcon
 } from '../common/icons/ToolbarIcons';
 
 interface CanvasToolbarProps {
@@ -28,20 +31,41 @@ const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
     canRedo
 }) => {
     const [showEraserMenu, setShowEraserMenu] = useState(false);
+    const [showSelectMenu, setShowSelectMenu] = useState(false);
     const isEraserActive = activeTool === 'eraser-radial' || activeTool === 'eraser-line';
+    const isSelectActive = activeTool === 'select-rect' || activeTool === 'select-lasso';
 
     const handleEraserClick = () => {
         if (isEraserActive) {
             setShowEraserMenu(!showEraserMenu);
+            setShowSelectMenu(false);
         } else {
             onToolChange('eraser-line');
             setShowEraserMenu(true);
+            setShowSelectMenu(false);
+        }
+    };
+
+    const handleSelectClick = () => {
+        if (isSelectActive) {
+            setShowSelectMenu(!showSelectMenu);
+            setShowEraserMenu(false);
+        } else {
+            // Default to rect select
+            onToolChange('select-rect');
+            setShowSelectMenu(true);
+            setShowEraserMenu(false);
         }
     };
 
     const selectEraserType = (type: 'eraser-radial' | 'eraser-line') => {
         onToolChange(type);
         setShowEraserMenu(false);
+    };
+
+    const selectSelectType = (type: 'select-rect' | 'select-lasso') => {
+        onToolChange(type);
+        setShowSelectMenu(false);
     };
 
     return (
@@ -74,19 +98,47 @@ const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
 
             {/* Tools */}
             <div className="relative flex flex-col items-center gap-1 p-1.5 bg-white/80 dark:bg-[#1a1a1a] backdrop-blur-sm border border-black/5 dark:border-white/10 rounded-full shadow-lg">
-                <button
-                    onClick={() => { onToolChange('select'); setShowEraserMenu(false); }}
-                    className={`p-2 rounded-full transition-all ${activeTool === 'select'
-                        ? 'bg-black text-white dark:bg-white dark:text-black shadow-sm'
-                        : 'text-slate-500 dark:text-white/40 hover:bg-black/5 dark:hover:bg-white/5'
-                        }`}
-                    title="Select"
-                >
-                    <SelectIcon />
-                </button>
+                <div className="relative">
+                    <button
+                        onClick={handleSelectClick}
+                        className={`p-2 rounded-full transition-all ${isSelectActive
+                            ? 'bg-black text-white dark:bg-white dark:text-black shadow-sm'
+                            : 'text-slate-500 dark:text-white/40 hover:bg-black/5 dark:hover:bg-white/5'
+                            }`}
+                        title="Select"
+                    >
+                        <SelectIcon />
+                    </button>
+
+                    {/* Select Type Menu */}
+                    {showSelectMenu && (
+                        <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 flex items-center gap-1 p-1 bg-white/90 dark:bg-[#1a1a1a] backdrop-blur-sm border border-black/5 dark:border-white/10 rounded-full shadow-lg animate-in slide-in-from-right-2 duration-150">
+                            <button
+                                onClick={() => selectSelectType('select-rect')}
+                                className={`p-2 rounded-full transition-all ${activeTool === 'select-rect'
+                                    ? 'bg-black text-white dark:bg-white dark:text-black shadow-sm'
+                                    : 'text-slate-500 dark:text-white/40 hover:bg-black/5 dark:hover:bg-white/5'
+                                    }`}
+                                title="Rectangle Selection"
+                            >
+                                <RectSelectIcon />
+                            </button>
+                            <button
+                                onClick={() => selectSelectType('select-lasso')}
+                                className={`p-2 rounded-full transition-all ${activeTool === 'select-lasso'
+                                    ? 'bg-black text-white dark:bg-white dark:text-black shadow-sm'
+                                    : 'text-slate-500 dark:text-white/40 hover:bg-black/5 dark:hover:bg-white/5'
+                                    }`}
+                                title="Lasso Selection"
+                            >
+                                <LassoSelectIcon />
+                            </button>
+                        </div>
+                    )}
+                </div>
 
                 <button
-                    onClick={() => { onToolChange('pen'); setShowEraserMenu(false); }}
+                    onClick={() => { onToolChange('pen'); setShowEraserMenu(false); setShowSelectMenu(false); }}
                     className={`p-2 rounded-full transition-all ${activeTool === 'pen'
                         ? 'bg-black text-white dark:bg-white dark:text-black shadow-sm'
                         : 'text-slate-500 dark:text-white/40 hover:bg-black/5 dark:hover:bg-white/5'

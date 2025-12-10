@@ -112,7 +112,7 @@ describe('CanvasBoard Selection & Move', () => {
         // 3. Switch to Select Tool
         rerender(
             <CanvasBoard
-                activeTool="select"
+                activeTool="select-rect"
                 theme="light"
                 onStrokeEnd={onStrokeEnd}
                 refCallback={() => { }}
@@ -147,7 +147,7 @@ describe('CanvasBoard Selection & Move', () => {
 
         const { container } = render(
             <CanvasBoard
-                activeTool="select"
+                activeTool="select-rect"
                 theme="light"
                 onStrokeEnd={onStrokeEnd}
                 refCallback={() => { }}
@@ -196,7 +196,7 @@ describe('CanvasBoard Selection & Move', () => {
 
         const { container } = render(
             <CanvasBoard
-                activeTool="select"
+                activeTool="select-rect"
                 theme="light"
                 onStrokeEnd={vi.fn()}
                 refCallback={() => { }}
@@ -227,7 +227,7 @@ describe('CanvasBoard Selection & Move', () => {
 
         const { container } = render(
             <CanvasBoard
-                activeTool="select"
+                activeTool="select-lasso"
                 theme="light"
                 onStrokeEnd={onStrokeEnd}
                 refCallback={() => { }}
@@ -267,7 +267,7 @@ describe('CanvasBoard Selection & Move', () => {
 
         const { container } = render(
             <CanvasBoard
-                activeTool="select"
+                activeTool="select-lasso"
                 theme="light"
                 onStrokeEnd={vi.fn()}
                 refCallback={() => { }}
@@ -306,7 +306,7 @@ describe('CanvasBoard Selection & Move', () => {
 
         const { container } = render(
             <CanvasBoard
-                activeTool="select"
+                activeTool="select-rect"
                 theme="light"
                 onStrokeEnd={vi.fn()}
                 refCallback={() => { }}
@@ -349,7 +349,7 @@ describe('CanvasBoard Selection & Move', () => {
 
         const { container, rerender } = render(
             <CanvasBoard
-                activeTool="select"
+                activeTool="select-rect"
                 theme="light"
                 onStrokeEnd={vi.fn()}
                 refCallback={() => { }}
