@@ -4,7 +4,7 @@ import { useAppContext } from '../../contexts/AppContext';
 
 // Component to render a single candidate with MathJax
 // Component to render a single candidate with MathJax
-const MathCandidate: React.FC<{ latex: string }> = ({ latex }) => {
+const MathCandidateBase: React.FC<{ latex: string }> = ({ latex }) => {
     const ref = useRef<HTMLSpanElement>(null);
     const parentRef = useRef<HTMLDivElement>(null);
     const [scale, setScale] = React.useState(1);
@@ -93,6 +93,11 @@ const MathCandidate: React.FC<{ latex: string }> = ({ latex }) => {
         </div>
     );
 };
+
+// Memoize to prevent re-renders when other UI state changes
+const MathCandidate = React.memo(MathCandidateBase, (prev, next) => {
+    return prev.latex === next.latex;
+});
 
 const Candidates: React.FC = () => {
     const {

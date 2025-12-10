@@ -23,10 +23,17 @@ const ERASER_SIZE = 20;
 const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, contentRefCallback, theme, activeTool, strokesRef: externalStrokesRef }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
-    const [isDrawing, setIsDrawing] = useState(false);
-    const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
+    const cursorRef = useRef<HTMLDivElement>(null); // Direct DOM Ref for cursor
+
+    // State only for things that change UI structure/mode, NOT high-frequency draw data
+    const [isDrawingState, setIsDrawingState] = useState(false);
+
+    // Refs for high-frequency data
+    const isDrawingRef = useRef(false);
     const lastPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+    const currentPos = useRef<{ x: number; y: number } | null>(null);
     const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const requestRef = useRef<number | null>(null);
 
     // Track strokes for line eraser
     const localStrokesRef = useRef<Stroke[]>([]);
@@ -196,21 +203,33 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
         return () => {
             window.removeEventListener('resize', handleResize);
             resizeObserver.disconnect();
+            if (requestRef.current) {
+                cancelAnimationFrame(requestRef.current);
+            }
         };
     }, [setupCanvas]);
 
-    const getPos = (e: React.MouseEvent | React.TouchEvent) => {
+    const getPos = (e: React.MouseEvent | React.TouchEvent | MouseEvent | TouchEvent) => {
         const canvas = canvasRef.current;
         if (!canvas) return { x: 0, y: 0 };
         const rect = canvas.getBoundingClientRect();
 
         let clientX, clientY;
         if ('touches' in e) {
-            clientX = e.touches[0].clientX;
-            clientY = e.touches[0].clientY;
+            // Check if there are any touches
+            if (e.touches.length > 0) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else if ((e as TouchEvent).changedTouches && (e as TouchEvent).changedTouches.length > 0) {
+                // Fallback for touchend
+                clientX = (e as TouchEvent).changedTouches[0].clientX;
+                clientY = (e as TouchEvent).changedTouches[0].clientY;
+            } else {
+                return { x: 0, y: 0 };
+            }
         } else {
-            clientX = (e as React.MouseEvent).clientX;
-            clientY = (e as React.MouseEvent).clientY;
+            clientX = (e as MouseEvent).clientX;
+            clientY = (e as MouseEvent).clientY;
         }
 
         return {
@@ -219,14 +238,31 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
         };
     };
 
+    // Update cursor DOM directly to avoid re-renders
+    const updateCursor = (pos: { x: number, y: number } | null) => {
+        if (!cursorRef.current || !containerRef.current) return;
 
+        if (pos) {
+            const containerRect = containerRef.current.getBoundingClientRect();
+            // Position relative to the container, but we need screen coords for fixed pos
+            // Actually, the previous implementation used fixed positioning.
+            // Let's stick to that but update via transform.
+            cursorRef.current.style.display = 'block';
+            cursorRef.current.style.transform = `translate(${pos.x + containerRect.left}px, ${pos.y + containerRect.top}px) translate(-50%, -50%)`;
+        } else {
+            cursorRef.current.style.display = 'none';
+        }
+    };
 
     const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
-        setIsDrawing(true);
-        const pos = getPos(e);
+        isDrawingRef.current = true;
+        setIsDrawingState(true);
+
+        const pos = getPos(e.nativeEvent);
         const dpr = window.devicePixelRatio || 1;
         const scaledPos = { x: pos.x * dpr, y: pos.y * dpr };
         lastPos.current = scaledPos;
+        currentPos.current = pos;
 
         if (activeTool === 'pen') {
             currentStrokeRef.current = [scaledPos];
@@ -271,15 +307,11 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
 
-    const draw = (e: React.MouseEvent | React.TouchEvent) => {
-        const currentPos = getPos(e);
-        setCursorPos(currentPos);
-
-        if (!isDrawing) return;
-        if ('touches' in e) e.preventDefault();
+    const processDraw = (currentPosData: { x: number, y: number }) => {
+        if (!isDrawingRef.current) return;
 
         const dpr = window.devicePixelRatio || 1;
-        const scaledPos = { x: currentPos.x * dpr, y: currentPos.y * dpr };
+        const scaledPos = { x: currentPosData.x * dpr, y: currentPosData.y * dpr };
 
         const canvas = contentCanvasRef.current; // Draw on the backing canvas
         const ctx = canvas?.getContext('2d', { willReadFrequently: true });
@@ -352,7 +384,17 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
                 }
             });
 
-            setSelectedStrokeIndices(newSelectedIndices);
+            // Note: calling this state setter inside a draw loop is generally skipped if value hasn't changed,
+            // but for high freq we should check equality first.
+            // React state updates are batched, but might be too frequent.
+            // For now, let's trust React optimization or we could throttle this specific update.
+            setSelectedStrokeIndices((prev) => {
+                if (prev.length === newSelectedIndices.length && prev.every((val, index) => val === newSelectedIndices[index])) {
+                    return prev;
+                }
+                return newSelectedIndices;
+            });
+
             redrawStrokes();
         }
 
@@ -373,8 +415,10 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
     };
 
     const stopDrawing = () => {
-        if (isDrawing) {
-            setIsDrawing(false);
+        if (isDrawingRef.current) {
+            isDrawingRef.current = false;
+            setIsDrawingState(false);
+
             isDragging.current = false;
             dragStartPos.current = null;
 
@@ -403,16 +447,29 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
     };
 
     const handleMouseMove = (e: React.MouseEvent) => {
-        setCursorPos(getPos(e));
-        draw(e);
+        const pos = getPos(e.nativeEvent);
+        currentPos.current = pos;
+        updateCursor(pos);
+        if (isDrawingRef.current) {
+            // In a real rAF loop we would read currentPos.current inside loop.
+            // But since we are simplifying without a full detached loop
+            // we can still just call processDraw here but we gained the benefit
+            // of NO React re-renders because isDrawing is a Ref and Cursor is direct DOM.
+            // To properly use rAF, we should decouple completely, 
+            // but eliminating the React Render cycle is the biggest win.
+            // Let's optimize by just calling processDraw directly here which is fast
+            // without the overhead of React Re-conciliation.
+            processDraw(pos);
+        }
     };
 
     const handleMouseLeave = () => {
-        setCursorPos(null);
+        currentPos.current = null;
+        updateCursor(null);
         stopDrawing();
     };
 
-    const showEraserCursor = (activeTool === 'eraser-radial' || activeTool === 'eraser-line') && cursorPos;
+    const showEraserCursor = (activeTool === 'eraser-radial' || activeTool === 'eraser-line');
 
     return (
         <div
@@ -433,44 +490,38 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
                 onMouseUp={stopDrawing}
                 onMouseLeave={handleMouseLeave}
                 onTouchStart={startDrawing}
-                onTouchMove={draw}
+                onTouchMove={(e) => {
+                    const pos = getPos(e.nativeEvent);
+                    currentPos.current = pos;
+                    updateCursor(pos);
+                    if (isDrawingRef.current) processDraw(pos);
+                }}
                 onTouchEnd={stopDrawing}
                 onDragStart={(e) => e.preventDefault()}
                 onContextMenu={(e) => e.preventDefault()}
             />
 
-            {/* Custom cursor */}
-            {cursorPos && (
-                <div
-                    className="pointer-events-none fixed z-50"
-                    style={{
-                        left: cursorPos.x + (containerRef.current?.getBoundingClientRect().left ?? 0),
-                        top: cursorPos.y + (containerRef.current?.getBoundingClientRect().top ?? 0),
-                        transform: 'translate(-50%, -50%)'
-                    }}
-                >
-                    {showEraserCursor ? (
-                        <div
-                            className="rounded-full border-2"
-                            style={{
-                                width: activeTool === 'eraser-radial' ? ERASER_SIZE : 20,
-                                height: activeTool === 'eraser-radial' ? ERASER_SIZE : 20,
-                                borderColor: theme === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)',
-                                borderStyle: activeTool === 'eraser-line' ? 'dashed' : 'solid'
-                            }}
-                        />
-                    ) : (
-                        <div
-                            className="rounded-full"
-                            style={{
-                                width: 6,
-                                height: 6,
-                                backgroundColor: theme === 'dark' ? '#fff' : '#000'
-                            }}
-                        />
-                    )}
-                </div>
-            )}
+            {/* Custom cursor (Direct DOM Control) */}
+            <div
+                ref={cursorRef}
+                className="pointer-events-none fixed z-50 rounded-full"
+                style={{
+                    display: 'none',
+                    left: 0,
+                    top: 0,
+                    // Use marginLeft/Top to center the transform origin if needed, or just transform
+                    // Default values, updated by ref
+                    width: showEraserCursor && activeTool === 'eraser-radial' ? ERASER_SIZE :
+                        showEraserCursor ? 20 : 6,
+                    height: showEraserCursor && activeTool === 'eraser-radial' ? ERASER_SIZE :
+                        showEraserCursor ? 20 : 6,
+                    borderWidth: showEraserCursor ? '2px' : '0px',
+                    borderColor: theme === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)',
+                    borderStyle: activeTool === 'eraser-line' ? 'dashed' : 'solid',
+                    backgroundColor: !showEraserCursor ? (theme === 'dark' ? '#fff' : '#000') : 'transparent',
+                    transform: 'translate(-9999px, -9999px)' // Initial off-screen
+                }}
+            />
         </div>
     );
 };
