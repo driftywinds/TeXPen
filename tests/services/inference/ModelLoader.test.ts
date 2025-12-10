@@ -44,7 +44,7 @@ describe('ModelLoader Progress Reporting', () => {
     }, onProgress);
 
     // Initial check
-    expect(onProgress).toHaveBeenCalledWith('Checking models...', 0);
+    expect(onProgress).toHaveBeenCalledWith('Loading models...', 0);
 
     // Check for progress call
     // We have 2 files (encoder, decoder) from the mocked config.
