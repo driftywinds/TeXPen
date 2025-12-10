@@ -98,7 +98,9 @@ describe('ImageUploadArea', () => {
 
         mockInferFromUrl.mockResolvedValue({ latex: 'test latex', candidates: [] });
 
-        fireEvent.click(screen.getByText('Convert to LaTeX'));
+        await React.act(async () => {
+            fireEvent.click(screen.getByText('Convert to LaTeX'));
+        });
 
         expect(mockInferFromUrl).toHaveBeenCalledTimes(1);
     });
