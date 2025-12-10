@@ -217,6 +217,10 @@ export class InferenceService {
         device = 'wasm';
         dtype = 'q8';
         sessionOptions = getSessionOptions(device, dtype);
+
+        // Explicitly download the WASM model files so the user sees progress
+        await this.preDownloadModels(modelId, sessionOptions, onProgress);
+
         const model = await AutoModelForVision2Seq.from_pretrained(modelId, sessionOptions) as VisionEncoderDecoderModel;
         return { model, device, dtype };
       } else {
