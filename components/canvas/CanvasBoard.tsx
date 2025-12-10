@@ -1,10 +1,10 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { ToolType, Point, Stroke } from '../../types/canvas';
-import { isPointNearStroke, isStrokeInRect, splitStrokes, isPointInBounds } from '../../utils/geometry';
+import { isPointNearStroke, splitStrokes, isPointInBounds, isStrokeInPolygon } from '../../utils/geometry';
 import {
     drawAllStrokes,
     drawSelectionHighlight,
-    drawSelectionBox,
+    drawLassoPath,
     copyToCanvas,
     getSelectionBounds
 } from '../../utils/canvasRendering';
@@ -38,9 +38,9 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
     const dragStartPos = useRef<{ x: number; y: number } | null>(null);
     const isDragging = useRef<boolean>(false);
 
-    // Box Selection State
-    const selectionBoxRef = useRef<{ start: Point; current: Point } | null>(null);
-    const isSelecting = useRef<boolean>(false);
+    // Lasso Selection State
+    const lassoPointsRef = useRef<Point[]>([]);
+    const isLassoSelecting = useRef<boolean>(false);
 
     const contentCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -127,9 +127,9 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
             drawSelectionHighlight(ctx, strokesRef.current, selectedStrokeIndices);
         }
 
-        // Draw selection box (on top of everything)
-        if (selectionBoxRef.current && isSelecting.current) {
-            drawSelectionBox(ctx, selectionBoxRef.current.start, selectionBoxRef.current.current);
+        // Draw lasso path (on top of everything)
+        if (isLassoSelecting.current && lassoPointsRef.current.length > 1) {
+            drawLassoPath(ctx, lassoPointsRef.current);
         }
 
         // Copy to visible canvas
@@ -258,9 +258,9 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
                     dragStartPos.current = scaledPos;
                 }
             } else {
-                // Clicked on empty space -> Start Selection Box
-                isSelecting.current = true;
-                selectionBoxRef.current = { start: scaledPos, current: scaledPos };
+                // Clicked on empty space -> Start Lasso Selection
+                isLassoSelecting.current = true;
+                lassoPointsRef.current = [scaledPos];
                 // Also clear previous selection
                 setSelectedStrokeIndices([]);
                 isDragging.current = false;
@@ -340,24 +340,14 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
                 }
             });
             redrawStrokes();
-        } else if (activeTool === 'select' && isSelecting.current && selectionBoxRef.current) {
-            // Box Selection Logic
-            selectionBoxRef.current.current = scaledPos;
+        } else if (activeTool === 'select' && isLassoSelecting.current) {
+            // Lasso Selection Logic
+            lassoPointsRef.current.push(scaledPos);
 
-            // Real-time selection update
-            const startStr = selectionBoxRef.current.start;
-            const curStr = selectionBoxRef.current.current;
-
-            const rect = {
-                x: Math.min(startStr.x, curStr.x),
-                y: Math.min(startStr.y, curStr.y),
-                w: Math.abs(curStr.x - startStr.x),
-                h: Math.abs(curStr.y - startStr.y)
-            };
-
+            // Real-time selection update using lasso polygon
             const newSelectedIndices: number[] = [];
             strokesRef.current.forEach((stroke, index) => {
-                if (isStrokeInRect(stroke, rect)) {
+                if (isStrokeInPolygon(stroke, lassoPointsRef.current)) {
                     newSelectedIndices.push(index);
                 }
             });
@@ -388,9 +378,9 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
             isDragging.current = false;
             dragStartPos.current = null;
 
-            if (isSelecting.current) {
-                isSelecting.current = false;
-                selectionBoxRef.current = null;
+            if (isLassoSelecting.current) {
+                isLassoSelecting.current = false;
+                lassoPointsRef.current = [];
                 redrawStrokes();
             }
 

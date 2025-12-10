@@ -32,6 +32,7 @@ describe('CanvasBoard Selection & Move', () => {
             beginPath: vi.fn(),
             moveTo: vi.fn(),
             lineTo: vi.fn(),
+            closePath: vi.fn(),
             stroke: vi.fn(),
             strokeRect: vi.fn(), // Key for verifying selection highlight
             fill: vi.fn(),
@@ -185,9 +186,6 @@ describe('CanvasBoard Selection & Move', () => {
     it('clears selection when clicking empty space', () => {
         const strokesRef = { current: [] as Stroke[] };
 
-        // Pre-measure selection logic... easier to just test visual/state effect
-        // But we can check internal state via behavior
-
         // Mock a stroke
         strokesRef.current = [{
             points: [{ x: 10, y: 10 }, { x: 20, y: 20 }],
@@ -211,29 +209,19 @@ describe('CanvasBoard Selection & Move', () => {
         // Select it
         fireEvent.mouseDown(canvas, { clientX: 15, clientY: 15 });
         fireEvent.mouseUp(canvas);
-        mockCtx.strokeRect.mockClear();
+        mockCtx.setLineDash.mockClear();
 
-        // Click empty space (100, 100)
+        // Click empty space (100, 100) and release immediately
         fireEvent.mouseDown(canvas, { clientX: 100, clientY: 100 });
         fireEvent.mouseUp(canvas);
 
-        // Should NOT draw selection box anymore
-        // Note: Canvas redraws everything. If selection is cleared, strokeRect won't be called.
-        // But redrawStrokes is called.
-        // But redrawStrokes is called.
-        // With box selection, clicking empty space starts a box (0x0 size)
-        expect(mockCtx.strokeRect).toHaveBeenCalledWith(100, 100, 0, 0);
-        // And importantly, it should NOT be called for the previously selected stroke (10,10)
-        expect(mockCtx.strokeRect).not.toHaveBeenCalledWith(expect.objectContaining({
-            x: expect.closeTo(10, 5) // Loose check for the stroke pos if we were checking args, 
-            // but vitest check is usually exact args. 
-            // Let's just check call count? 
-            // If it was selected, it would be called twice (once for box, once for stroke).
-        }));
-        expect(mockCtx.strokeRect).toHaveBeenCalledTimes(1);
+        // After clicking empty space, selection should be cleared
+        // Selection highlight uses setLineDash([5, 5])
+        // If selection is cleared, this should not be called
+        expect(mockCtx.setLineDash).not.toHaveBeenCalledWith([5, 5]);
     });
 
-    it('starts box selection when dragging on empty space', () => {
+    it('starts lasso selection when dragging on empty space', () => {
         const strokesRef = { current: [] as Stroke[] };
         const onStrokeEnd = vi.fn();
 
@@ -249,19 +237,24 @@ describe('CanvasBoard Selection & Move', () => {
         );
         const canvas = container.querySelector('canvas')!;
 
+        mockCtx.beginPath.mockClear();
+        mockCtx.moveTo.mockClear();
+        mockCtx.lineTo.mockClear();
+        mockCtx.fill.mockClear();
+
         // 1. Mouse down on empty space (100, 100)
         fireEvent.mouseDown(canvas, { clientX: 100, clientY: 100 });
 
         // 2. Drag to (200, 200)
         fireEvent.mouseMove(canvas, { clientX: 200, clientY: 200 });
 
-        // Verify selection box drawing
-        // Should draw fillRect and strokeRect for the box
-        expect(mockCtx.fillRect).toHaveBeenCalled();
-        expect(mockCtx.strokeRect).toHaveBeenCalled();
+        // Verify lasso path drawing
+        // Lasso uses beginPath, moveTo, lineTo, closePath, fill, stroke
+        expect(mockCtx.beginPath).toHaveBeenCalled();
+        expect(mockCtx.fill).toHaveBeenCalled();
     });
 
-    it('selects strokes within the box', () => {
+    it('selects strokes within the lasso', () => {
         const strokesRef = { current: [] as Stroke[] };
 
         // Stroke at (50, 50) to (60, 60)
@@ -284,17 +277,20 @@ describe('CanvasBoard Selection & Move', () => {
         );
         const canvas = container.querySelector('canvas')!;
 
-        mockCtx.strokeRect.mockClear();
+        mockCtx.setLineDash.mockClear();
 
-        // 1. Box select from (40, 40) to (70, 70) - Encloses the stroke
+        // 1. Draw a lasso that encloses the stroke
+        // Draw a rough circle around (50,50)-(60,60) stroke
         fireEvent.mouseDown(canvas, { clientX: 40, clientY: 40 });
+        fireEvent.mouseMove(canvas, { clientX: 70, clientY: 40 });
         fireEvent.mouseMove(canvas, { clientX: 70, clientY: 70 });
+        fireEvent.mouseMove(canvas, { clientX: 40, clientY: 70 });
 
         // 2. Release to finalize
         fireEvent.mouseUp(canvas);
 
-        // Verify stroke is highlighted
-        expect(mockCtx.strokeRect).toHaveBeenCalled();
+        // Verify stroke is highlighted (setLineDash is called for selection highlight)
+        expect(mockCtx.setLineDash).toHaveBeenCalledWith([5, 5]);
     });
 
     it('allows dragging by clicking inside the bounding box', () => {

@@ -3,11 +3,14 @@ Priority
 Bugs
 
 Behavior
+- [ ] Parallelize downloads for encoder/decoder
+
 Features
-- [ ] Add lasso selection
 
 Visuals
 
 Maintenance
+- [ ] Optimize performance, memory usage is very high
+- [ ] Optimize speed
 
 Roadmap

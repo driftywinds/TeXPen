@@ -72,6 +72,53 @@ export function isStrokeInRect(stroke: { points: Point[] }, rect: { x: number, y
   return true;
 }
 
+/**
+ * Check if a point is inside a polygon using ray-casting algorithm
+ */
+export function isPointInPolygon(point: Point, polygon: Point[]): boolean {
+  if (polygon.length < 3) return false;
+
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i].x, yi = polygon[i].y;
+    const xj = polygon[j].x, yj = polygon[j].y;
+
+    if (((yi > point.y) !== (yj > point.y)) &&
+      (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi)) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+/**
+ * Check if a stroke intersects with or is contained within a polygon (for lasso selection)
+ */
+export function isStrokeInPolygon(stroke: { points: Point[] }, polygon: Point[]): boolean {
+  if (polygon.length < 3) return false;
+
+  // Check if any stroke point is inside the polygon
+  for (const point of stroke.points) {
+    if (isPointInPolygon(point, polygon)) {
+      return true;
+    }
+  }
+
+  // Check if any stroke segment intersects any polygon edge
+  for (let i = 0; i < stroke.points.length - 1; i++) {
+    const strokeP1 = stroke.points[i];
+    const strokeP2 = stroke.points[i + 1];
+
+    for (let j = 0, k = polygon.length - 1; j < polygon.length; k = j++) {
+      if (doSegmentsIntersect(strokeP1, strokeP2, polygon[j], polygon[k])) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 export function splitStrokes<T extends { points: Point[] }>(strokes: T[], erasePoint: Point, radius: number): T[] {
   const thresholdSq = radius * radius;
   const newStrokes: T[] = [];

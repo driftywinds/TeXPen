@@ -130,3 +130,30 @@ export function copyToCanvas(
   ctx.drawImage(source, 0, 0);
   ctx.restore();
 }
+
+/**
+ * Draw a lasso selection path (freeform polygon)
+ */
+export function drawLassoPath(
+  ctx: CanvasRenderingContext2D,
+  points: Point[]
+): void {
+  if (points.length < 2) return;
+
+  ctx.save();
+  ctx.strokeStyle = '#3b82f6';
+  ctx.fillStyle = 'rgba(59, 130, 246, 0.1)';
+  ctx.lineWidth = 1;
+
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) {
+    ctx.lineTo(points[i].x, points[i].y);
+  }
+  ctx.closePath();
+
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
