@@ -169,7 +169,7 @@ export class InferenceService {
   private wakeQueuePromise: ((value: void) => void) | null = null;
 
   private pendingRequestTimestamp: number = 0;
-  private graceTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
 
   private pendingRequest: {
     blob: Blob;
@@ -178,7 +178,7 @@ export class InferenceService {
     reject: (reason?: any) => void;
   } | null = null;
 
-  private static readonly GRACE_PERIOD_MS = 3000;
+
 
   public async infer(imageBlob: Blob, numCandidates: number = 1): Promise<InferenceResult> {
     return new Promise((resolve, reject) => {
@@ -186,10 +186,7 @@ export class InferenceService {
         this.pendingRequest.reject(new Error("Skipped"));
       }
 
-      if (this.graceTimeoutId) {
-        clearTimeout(this.graceTimeoutId);
-        this.graceTimeoutId = null;
-      }
+
 
       this.pendingRequest = {
         blob: imageBlob,
@@ -200,14 +197,8 @@ export class InferenceService {
       this.pendingRequestTimestamp = Date.now();
 
       if (this.isInferring && this.abortController) {
-        console.log('[InferenceService] New request while inferring. Starting 3s grace period from now...');
-        this.graceTimeoutId = setTimeout(() => {
-          if (this.isInferring && this.abortController) {
-            console.warn('[InferenceService] 3s grace period expired. Aborting current inference.');
-            this.abortController.abort();
-          }
-          this.graceTimeoutId = null;
-        }, InferenceService.GRACE_PERIOD_MS);
+        console.log('[InferenceService] New request while inferring. Aborting current inference immediately.');
+        this.abortController.abort();
       }
 
       if (this.wakeQueuePromise) {
@@ -316,10 +307,7 @@ export class InferenceService {
         this.pendingRequest = null;
         this.pendingRequestTimestamp = 0;
 
-        if (this.graceTimeoutId) {
-          clearTimeout(this.graceTimeoutId);
-          this.graceTimeoutId = null;
-        }
+
 
         this.isInferring = true;
         this.abortController = new AbortController();
