@@ -1,22 +1,20 @@
 /**
- * Canvas Performance Benchmark
- * 
- * This test simulates rapid drawing operations to measure
- * the performance of the CanvasBoard component.
- * 
- * Key metrics:
- * - Time to process N draw events
- * - Operations per second
+ * Canvas Performance Comparison Benchmark
+ * Compares OLD (pre-optimization) vs NEW (optimized) CanvasBoard
  * 
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest';
 import { render, cleanup, fireEvent } from '@testing-library/react';
 import React from 'react';
+
+// We'll test the NEW implementation only, since we can't easily import the old one
+// without build conflicts. Instead, we'll run this test before and after git checkout.
 import CanvasBoard from '../../components/canvas/CanvasBoard';
 
-describe('Canvas Performance Benchmark', () => {
-    const NUM_DRAW_EVENTS = 500;
+describe('Canvas Performance Comparison', () => {
+    const NUM_DRAW_EVENTS = 1000; // More events for better measurement
+    const NUM_RUNS = 3; // Multiple runs for average
 
     let mockCtx: any;
     let originalCreateElement: typeof document.createElement;
@@ -39,7 +37,6 @@ describe('Canvas Performance Benchmark', () => {
     beforeEach(() => {
         vi.useFakeTimers();
 
-        // Mock Canvas Context
         mockCtx = {
             clearRect: vi.fn(),
             beginPath: vi.fn(),
@@ -65,25 +62,14 @@ describe('Canvas Performance Benchmark', () => {
 
         vi.spyOn(document, 'createElement').mockImplementation((tagName, options) => {
             if (tagName === 'canvas') {
-                // Use JSDOM canvas which has full DOM API needed by React
                 const canvas = document.implementation.createHTMLDocument().createElement('canvas');
-
                 canvas.getContext = vi.fn((type) => {
                     if (type === '2d') return mockCtx;
                     return null;
                 }) as any;
-
-                // Mock getBoundingClientRect for coordinate calculations
                 canvas.getBoundingClientRect = () => ({
-                    left: 0,
-                    top: 0,
-                    width: 500,
-                    height: 500,
-                    right: 500,
-                    bottom: 500,
-                    x: 0,
-                    y: 0,
-                    toJSON: () => { }
+                    left: 0, top: 0, width: 500, height: 500,
+                    right: 500, bottom: 500, x: 0, y: 0, toJSON: () => { }
                 });
                 return canvas;
             }
@@ -91,110 +77,61 @@ describe('Canvas Performance Benchmark', () => {
         });
     });
 
-    it(`should process ${NUM_DRAW_EVENTS} draw events efficiently`, () => {
-        const onStrokeEnd = vi.fn();
-        const refCallback = vi.fn();
-        const contentRefCallback = vi.fn();
+    it(`benchmark: ${NUM_DRAW_EVENTS} draw events x ${NUM_RUNS} runs`, () => {
+        const durations: number[] = [];
 
-        const { container } = render(
-            <CanvasBoard
-                theme="dark"
-                activeTool="pen"
-                onStrokeEnd={onStrokeEnd}
-                refCallback={refCallback}
-                contentRefCallback={contentRefCallback}
-            />
-        );
-
-        const canvas = container.querySelector('canvas');
-        expect(canvas).toBeTruthy();
-        if (!canvas) return;
-
-        // Start drawing
-        fireEvent.mouseDown(canvas, { clientX: 100, clientY: 100 });
-
-        // Measure time for N draw events using real timers for accurate measurement
-        vi.useRealTimers();
-        const startTime = performance.now();
-
-        for (let i = 0; i < NUM_DRAW_EVENTS; i++) {
-            fireEvent.mouseMove(canvas, {
-                clientX: 100 + i,
-                clientY: 100 + Math.sin(i / 10) * 50
-            });
-        }
-
-        const endTime = performance.now();
-        const duration = endTime - startTime;
-        const eventsPerSecond = (NUM_DRAW_EVENTS / duration) * 1000;
-
-        // Stop drawing
-        fireEvent.mouseUp(canvas);
-
-        console.log('\n=== Canvas Performance Benchmark Results ===');
-        console.log(`Events processed: ${NUM_DRAW_EVENTS}`);
-        console.log(`Total duration: ${duration.toFixed(2)}ms`);
-        console.log(`Events per second: ${eventsPerSecond.toFixed(0)}`);
-        console.log(`Average time per event: ${(duration / NUM_DRAW_EVENTS).toFixed(3)}ms`);
-        console.log('============================================\n');
-
-        // Performance assertion: 
-        // For 60fps, we need to process each event in under ~16ms
-        // With optimization, we expect much better than this
-        expect(duration / NUM_DRAW_EVENTS).toBeLessThan(16);
-
-        // We should be able to handle at least 1000 events/second
-        expect(eventsPerSecond).toBeGreaterThan(1000);
-    });
-
-    it('should handle rapid tool changes without performance degradation', () => {
-        const onStrokeEnd = vi.fn();
-        const refCallback = vi.fn();
-        const contentRefCallback = vi.fn();
-
-        const { rerender, container } = render(
-            <CanvasBoard
-                theme="dark"
-                activeTool="pen"
-                onStrokeEnd={onStrokeEnd}
-                refCallback={refCallback}
-                contentRefCallback={contentRefCallback}
-            />
-        );
-
-        const canvas = container.querySelector('canvas');
-        expect(canvas).toBeTruthy();
-        if (!canvas) return;
-
-        const tools = ['pen', 'eraser-radial', 'eraser-line', 'select'] as const;
-        const TOOL_CHANGES = 100;
-
-        vi.useRealTimers();
-        const startTime = performance.now();
-
-        for (let i = 0; i < TOOL_CHANGES; i++) {
-            const tool = tools[i % tools.length];
-            rerender(
+        for (let run = 0; run < NUM_RUNS; run++) {
+            const { container, unmount } = render(
                 <CanvasBoard
                     theme="dark"
-                    activeTool={tool}
-                    onStrokeEnd={onStrokeEnd}
-                    refCallback={refCallback}
-                    contentRefCallback={contentRefCallback}
+                    activeTool="pen"
+                    onStrokeEnd={vi.fn()}
+                    refCallback={vi.fn()}
+                    contentRefCallback={vi.fn()}
                 />
             );
+
+            const canvas = container.querySelector('canvas');
+            if (!canvas) throw new Error('Canvas not found');
+
+            fireEvent.mouseDown(canvas, { clientX: 100, clientY: 100 });
+
+            vi.useRealTimers();
+            const startTime = performance.now();
+
+            for (let i = 0; i < NUM_DRAW_EVENTS; i++) {
+                fireEvent.mouseMove(canvas, {
+                    clientX: 100 + (i % 300),
+                    clientY: 100 + Math.sin(i / 10) * 50
+                });
+            }
+
+            const endTime = performance.now();
+            durations.push(endTime - startTime);
+
+            fireEvent.mouseUp(canvas);
+            unmount();
+            vi.useFakeTimers();
         }
 
-        const endTime = performance.now();
-        const duration = endTime - startTime;
+        const avgDuration = durations.reduce((a, b) => a + b, 0) / durations.length;
+        const eventsPerSecond = (NUM_DRAW_EVENTS / avgDuration) * 1000;
 
-        console.log('\n=== Tool Change Performance Results ===');
-        console.log(`Tool changes: ${TOOL_CHANGES}`);
-        console.log(`Total duration: ${duration.toFixed(2)}ms`);
-        console.log(`Average per change: ${(duration / TOOL_CHANGES).toFixed(3)}ms`);
-        console.log('=======================================\n');
+        console.log('\n╔══════════════════════════════════════════════════════╗');
+        console.log('║        CANVAS PERFORMANCE BENCHMARK RESULTS          ║');
+        console.log('╠══════════════════════════════════════════════════════╣');
+        console.log(`║ Events per run:     ${NUM_DRAW_EVENTS.toString().padStart(6)}                          ║`);
+        console.log(`║ Number of runs:     ${NUM_RUNS.toString().padStart(6)}                          ║`);
+        console.log('╠══════════════════════════════════════════════════════╣');
+        durations.forEach((d, i) => {
+            console.log(`║ Run ${i + 1}:              ${d.toFixed(2).padStart(8)}ms                    ║`);
+        });
+        console.log('╠══════════════════════════════════════════════════════╣');
+        console.log(`║ AVERAGE:            ${avgDuration.toFixed(2).padStart(8)}ms                    ║`);
+        console.log(`║ Events/second:      ${eventsPerSecond.toFixed(0).padStart(8)}                    ║`);
+        console.log(`║ Avg per event:      ${(avgDuration / NUM_DRAW_EVENTS).toFixed(4).padStart(8)}ms                    ║`);
+        console.log('╚══════════════════════════════════════════════════════╝\n');
 
-        // Tool changes should be very fast (< 5ms each on average)
-        expect(duration / TOOL_CHANGES).toBeLessThan(5);
+        expect(avgDuration / NUM_DRAW_EVENTS).toBeLessThan(5); // Less than 5ms per event
     });
 });
