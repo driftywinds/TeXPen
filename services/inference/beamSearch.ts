@@ -138,18 +138,37 @@ export async function beamSearch(
           }
         }
 
-        // Compute log probabilities from logits
-        const maxLogit = Math.max(...logitsData);
-        const expSum = logitsData.reduce((sum, x) => sum + Math.exp(x - maxLogit), 0);
-        const logProbs = Array.from(logitsData).map(x => (x - maxLogit) - Math.log(expSum));
+        // Efficiently calculate LogSoftmax and Top-K without full array allocations
+        let maxLogit = -Infinity;
+        for (let i = 0; i < logitsData.length; i++) {
+          if (logitsData[i] > maxLogit) maxLogit = logitsData[i];
+        }
 
-        // Get top-k tokens
-        const topK = logProbs
-          .map((prob, idx) => ({ prob, idx }))
-          .sort((a, b) => b.prob - a.prob)
-          .slice(0, numBeams);
+        let expSum = 0;
+        for (let i = 0; i < logitsData.length; i++) {
+          expSum += Math.exp(logitsData[i] - maxLogit);
+        }
 
-        for (const { prob, idx } of topK) {
+        const logSumExp = maxLogit + Math.log(expSum);
+
+        // Find top-k indices and values safely
+        // Since K is small (numBeams), we can maintain a sorted list
+        const topCandidates: { idx: number; val: number }[] = [];
+
+        for (let i = 0; i < logitsData.length; i++) {
+          const val = logitsData[i];
+
+          if (topCandidates.length < numBeams) {
+            topCandidates.push({ idx: i, val });
+            topCandidates.sort((a, b) => b.val - a.val); // Sort descending
+          } else if (val > topCandidates[topCandidates.length - 1].val) {
+            topCandidates[topCandidates.length - 1] = { idx: i, val };
+            topCandidates.sort((a, b) => b.val - a.val);
+          }
+        }
+
+        for (const { idx, val } of topCandidates) {
+          const prob = val - logSumExp;
           allCandidates.push({
             tokens: [...beam.tokens, idx],
             score: beam.score + prob,
