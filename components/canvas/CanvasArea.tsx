@@ -71,10 +71,17 @@ const CanvasArea: React.FC<CanvasAreaProps> = ({ theme, onStrokeEnd, onClear, in
 
     const handleStrokeEnd = useCallback(() => {
         if (contentCanvasRef.current) {
-            saveSnapshot(contentCanvasRef.current, strokesRef.current);
+            // History is now handled per-stroke in handleStrokeAdded
+            // We only trigger the parent's onStrokeEnd (inference) here
             onStrokeEnd(contentCanvasRef.current, strokesRef.current);
         }
-    }, [onStrokeEnd, saveSnapshot]);
+    }, [onStrokeEnd]);
+
+    const handleStrokeAdded = useCallback(() => {
+        if (contentCanvasRef.current) {
+            saveSnapshot(contentCanvasRef.current, strokesRef.current);
+        }
+    }, [saveSnapshot]);
 
     const handleClear = () => {
         const canvas = canvasRef.current;
@@ -154,6 +161,7 @@ const CanvasArea: React.FC<CanvasAreaProps> = ({ theme, onStrokeEnd, onClear, in
                 activeTool={activeTool}
                 strokesRef={strokesRef}
                 onStrokeEnd={handleStrokeEnd}
+                onStrokeAdded={handleStrokeAdded}
                 refCallback={setCanvasRef}
                 contentRefCallback={setContentCanvasRef}
             />

@@ -12,6 +12,7 @@ import {
 
 interface CanvasBoardProps {
     onStrokeEnd: () => void;
+    onStrokeAdded?: () => void;
     refCallback: (ref: HTMLCanvasElement | null) => void;
     contentRefCallback: (ref: HTMLCanvasElement | null) => void;
     theme: 'dark' | 'light';
@@ -21,7 +22,7 @@ interface CanvasBoardProps {
 
 const ERASER_SIZE = 20;
 
-const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, contentRefCallback, theme, activeTool, strokesRef: externalStrokesRef }) => {
+const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, onStrokeAdded, refCallback, contentRefCallback, theme, activeTool, strokesRef: externalStrokesRef }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const cursorRef = useRef<HTMLDivElement>(null); // Direct DOM Ref for cursor
@@ -496,6 +497,10 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, refCallback, con
                 });
             }
             currentStrokeRef.current = [];
+
+            if (onStrokeAdded) {
+                onStrokeAdded();
+            }
 
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
             timeoutRef.current = setTimeout(() => {

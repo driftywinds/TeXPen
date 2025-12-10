@@ -4,9 +4,12 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import CanvasArea from '../../../components/canvas/CanvasArea';
 import { describe, it, expect, vi } from 'vitest';
 
-// Mock CanvasBoard to ensure refs are passed back to CanvasArea
+// Mock CanvasBoard to expose callbacks for testing
+let capturedOnStrokeAdded: (() => void) | undefined;
+
 vi.mock('../../../components/canvas/CanvasBoard', () => ({
-    default: ({ refCallback, contentRefCallback }: any) => {
+    default: ({ refCallback, contentRefCallback, onStrokeAdded }: any) => {
+        capturedOnStrokeAdded = onStrokeAdded;
         useEffect(() => {
             // Create mock canvas elements
             const mockCanvas = document.createElement('canvas');
@@ -158,5 +161,50 @@ describe('CanvasArea', () => {
         });
 
         vi.restoreAllMocks();
+    });
+
+    it('saves snapshot when a stroke is added (single stroke undo)', async () => {
+        const mockOnClear = vi.fn();
+        const mockOnStrokeEnd = vi.fn();
+
+        // Create mock context with getImageData to verify snapshot saving
+        const mockCtx = {
+            clearRect: vi.fn(),
+            getImageData: vi.fn(() => ({ data: new Uint8ClampedArray(4), width: 1, height: 1 })),
+            putImageData: vi.fn(),
+            drawImage: vi.fn(),
+            save: vi.fn(),
+            restore: vi.fn(),
+            resetTransform: vi.fn()
+        } as any;
+
+        const originalCreateElement = document.createElement.bind(document);
+        vi.spyOn(document, 'createElement').mockImplementation((tagName, options) => {
+            if (tagName === 'canvas') {
+                const canvas = originalCreateElement(tagName, options) as HTMLCanvasElement;
+                canvas.getContext = vi.fn(() => mockCtx);
+                // Mock width/height
+                Object.defineProperty(canvas, 'width', { value: 100 });
+                Object.defineProperty(canvas, 'height', { value: 100 });
+                return canvas;
+            }
+            return originalCreateElement(tagName, options);
+        });
+
+        render(
+            <CanvasArea
+                theme="light"
+                onClear={mockOnClear}
+                onStrokeEnd={mockOnStrokeEnd}
+            />
+        );
+
+        // Simulate stroke added event
+        if (capturedOnStrokeAdded) {
+            capturedOnStrokeAdded();
+        }
+
+        // Verify getImageData was called to save state
+        expect(mockCtx.getImageData).toHaveBeenCalled();
     });
 });
