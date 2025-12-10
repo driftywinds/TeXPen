@@ -356,6 +356,9 @@ export class InferenceService {
     // Increment generation to invalidate any pending inits
     this.disposalGeneration++;
 
+    // Capture the promise before aborting/clearing, as the finally block in runInference clears it
+    const pendingInference = this.currentInferencePromise;
+
     if (this.abortController) {
       this.abortController.abort();
       this.abortController = null;
@@ -364,6 +367,15 @@ export class InferenceService {
     if (this.pendingRequest) {
       this.pendingRequest.reject(new Error("Aborted"));
       this.pendingRequest = null;
+    }
+
+    // If we have a running inference, wait for it to clean up
+    if (pendingInference) {
+      try {
+        await pendingInference;
+      } catch (e) {
+        // Expected abort error or other runtime errors
+      }
     }
 
     this.isInferring = false;
