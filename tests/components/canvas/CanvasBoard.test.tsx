@@ -385,4 +385,112 @@ describe('CanvasBoard Selection & Move', () => {
         // After clearing, strokeRect should not be called with the selection params
         expect(mockCtx.setLineDash).not.toHaveBeenCalledWith([5, 5]);
     });
+    it('cancels pending inference timer when starting a move', () => {
+        const strokesRef = { current: [] as Stroke[] };
+        const onStrokeEnd = vi.fn();
+
+        const { container } = render(
+            <CanvasBoard
+                activeTool="pen"
+                theme="light"
+                onStrokeEnd={onStrokeEnd}
+                refCallback={() => { }}
+                contentRefCallback={() => { }}
+                strokesRef={strokesRef}
+            />
+        );
+        const canvas = container.querySelector('canvas')!;
+
+        // 1. Draw a stroke
+        fireEvent.mouseDown(canvas, { clientX: 10, clientY: 10 });
+        fireEvent.mouseMove(canvas, { clientX: 50, clientY: 10 });
+        fireEvent.mouseUp(canvas);
+
+        // Timer of 600ms is now running.
+        // Advance 300ms (not yet finished)
+        act(() => {
+            vi.advanceTimersByTime(300);
+        });
+
+        // onStrokeEnd should not have been called yet
+        expect(onStrokeEnd).not.toHaveBeenCalled();
+
+        // 2. Select the stroke (click) - this interaction should cancel/reset timer
+        // Note: activeTool is still pen. We need to switch to select to move.
+        // Rerender with select tool
+        const { rerender } = render(
+            <CanvasBoard
+                activeTool="select-rect"
+                theme="light"
+                onStrokeEnd={onStrokeEnd}
+                refCallback={() => { }}
+                contentRefCallback={() => { }}
+                strokesRef={strokesRef}
+            />,
+            { container }
+        );
+
+        // Click to select the stroke
+        fireEvent.mouseDown(canvas, { clientX: 30, clientY: 10 });
+        fireEvent.mouseUp(canvas);
+
+        // Timer was reset on mouseUp. New 600ms timer starts.
+
+        // 3. Immediately start dragging (Move)
+        // This simulates "starting buffer for moving selection too"
+        // If we start moving, we should cancel any pending timer.
+        fireEvent.mouseDown(canvas, { clientX: 30, clientY: 10 });
+
+        // This mouseDown should have cancelled the timer from step 2 (moveUp)
+
+        // Advance 400ms. 
+        // Total time from step 2 mouseUp = slightly more, but if timer wasn't cancelled, it would fire at 600ms.
+        // We are at T=0 (mouseDown). 
+        // If timer from step 2 was not cancelled, it would fire in 600ms. 
+        // Wait, step 2 mouseUp set a simple timer.
+        // step 3 mouseDown (startDrawing) should cancel it.
+
+        act(() => {
+            vi.advanceTimersByTime(400);
+        });
+
+        // 400ms passed since mouseDown.
+        // If timer from step 2 (MouseUp) was active, 300ms from step 1 + ... wait.
+        // Let's be precise.
+        // T=0: Pen Up. Timer1 starts (expires at T=600).
+        // T=300: Switch Tool. 
+        // T=300: Select Click (Down). Timer1 cancelled (startDrawing).
+        // T=300: Select Click (Up). select-rect. Timer2 starts (expires at T=300+600=900).
+        // T=310 (approx): Start Drag (Down). Timer2 SHOULD be cancelled.
+        // T=710 (Advance 400). Current time 710.
+        // If Timer2 was NOT cancelled, it would NOT fire yet (900).
+        // Wait, creating a selection (Click Down/Up) triggers `stopDrawing` -> Timer.
+
+        // Let's adjust the test to ensure we catch the bug.
+        // The bug was: Start Dragging (Down) -> Return Early -> Timer NOT cancelled.
+        // So Timer2 would continue to run and fire at T=900.
+        // If we Drag for long enough, it fires.
+
+        // Let's advance time to T=1000.
+        // If Timer2 is cancelled, onStrokeEnd should NOT be called.
+        // If Timer2 is NOT cancelled, onStrokeEnd SHOULD be called.
+
+        act(() => {
+            vi.advanceTimersByTime(1000);
+        });
+
+        // Since we are still dragging (no MouseUp), onStrokeEnd should NOT be called if logic is correct.
+        expect(onStrokeEnd).not.toHaveBeenCalled();
+
+        // 4. End Drag
+        fireEvent.mouseUp(canvas);
+
+        // Timer3 starts (600ms).
+        act(() => {
+            vi.advanceTimersByTime(600);
+        });
+
+        // NOW it should be called
+        expect(onStrokeEnd).toHaveBeenCalledTimes(1);
+    });
 });

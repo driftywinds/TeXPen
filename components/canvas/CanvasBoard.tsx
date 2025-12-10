@@ -273,6 +273,7 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, onStrokeAdded, r
     const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
         isDrawingRef.current = true;
         setIsDrawingState(true);
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
         const pos = getPos(e.nativeEvent);
         const dpr = window.devicePixelRatio || 1;
@@ -328,7 +329,7 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, onStrokeAdded, r
             }
         }
 
-        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
     };
 
     const processDraw = (currentPosData: { x: number, y: number }) => {
