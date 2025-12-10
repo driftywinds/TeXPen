@@ -98,13 +98,14 @@ export class InferenceService {
 
       const sessionOptions = getSessionOptions(device, dtype);
 
-      // Pre-download heavy model files using DownloadManager
-      await this.preDownloadModels(this.currentModelId, sessionOptions, onProgress);
+      // Pre-download heavy model files using ModelLoader
+      const { modelLoader } = await import('./ModelLoader');
+      await modelLoader.preDownloadModels(this.currentModelId, sessionOptions, onProgress);
 
       // Load Tokenizer and Model in parallel
       const [tokenizer, modelResult] = await Promise.all([
         AutoTokenizer.from_pretrained(this.currentModelId),
-        this.loadModelWithFallback(this.currentModelId, device, dtype, onProgress)
+        modelLoader.loadModelWithFallback(this.currentModelId, device, dtype, onProgress)
       ]);
 
       const { model, dtype: finalDtype } = modelResult;
@@ -161,111 +162,6 @@ export class InferenceService {
     }
   }
 
-  private async preDownloadModels(modelId: string, sessionOptions: any, onProgress?: (status: string, progress?: number) => void): Promise<void> {
-    // Pre-download heavy model files using DownloadManager to support completion/resuming
-    const { downloadManager } = await import('../downloader/DownloadManager');
-    const commonFiles = [
-      `onnx/${sessionOptions.encoder_model_file_name}`,
-      `onnx/${sessionOptions.decoder_model_file_name}`,
-    ];
-
-    // State for tracking progress across multiple files
-    const progressState: Record<string, { loaded: number, total: number }> = {};
-
-    // Initialize state
-    commonFiles.forEach(f => {
-      progressState[f] = { loaded: 0, total: 0 };
-    });
-
-    const updateProgress = () => {
-      if (!onProgress) return;
-
-      let totalLoaded = 0;
-      let totalSize = 0;
-      const parts: string[] = [];
-
-      Object.entries(progressState).forEach(([f, s]) => {
-        totalLoaded += s.loaded;
-        totalSize += s.total;
-
-        // Identify file type
-        const name = f.includes('encoder') ? 'Enc' : (f.includes('decoder') ? 'Dec' : 'File');
-        const pct = s.total > 0 ? Math.round((s.loaded / s.total) * 100) : 0;
-        parts.push(`${name}: ${pct}%`);
-      });
-
-      if (totalSize === 0) return;
-
-      // Calculate total percentage for the progress bar width
-      const totalPercentage = Math.round((totalLoaded / totalSize) * 100);
-
-      // Pass the detailed string as the status text
-      onProgress(`${parts.join(' | ')}`, totalPercentage);
-    };
-
-    if (onProgress) onProgress(`Checking models...`, 0);
-
-    const downloadPromises = commonFiles.map(async (file) => {
-      const fileUrl = `https://huggingface.co/${modelId}/resolve/main/${file}`;
-      try {
-        await downloadManager.downloadFile(fileUrl, (p) => {
-          progressState[file] = { loaded: p.loaded, total: p.total };
-          updateProgress();
-        });
-      } catch (e) {
-        console.warn(`[InferenceService] Pre-download skipped for ${file}:`, e);
-      }
-    });
-
-    await Promise.all(downloadPromises);
-  }
-
-  private async loadModelWithFallback(
-    modelId: string,
-    initialDevice: string,
-    initialDtype: string,
-    onProgress?: (status: string, progress?: number) => void
-  ): Promise<{ model: VisionEncoderDecoderModel, device: string, dtype: string }> {
-    let device = initialDevice;
-    let dtype = initialDtype;
-    let sessionOptions = getSessionOptions(device, dtype);
-
-    try {
-      const model = await AutoModelForVision2Seq.from_pretrained(modelId, sessionOptions) as VisionEncoderDecoderModel;
-      return { model, device, dtype };
-    } catch (loadError: any) {
-      // Check if this is a WebGPU buffer size / memory error OR generic unsupported device error (common in Node env)
-      const isWebGPUMemoryError = loadError?.message?.includes('createBuffer') ||
-        loadError?.message?.includes('mappedAtCreation') ||
-        loadError?.message?.includes('too large for the implementation') ||
-        loadError?.message?.includes('GPUDevice');
-
-      const isUnsupportedDeviceError = loadError?.message?.includes('Unsupported device');
-
-      if ((isWebGPUMemoryError || isUnsupportedDeviceError) && device === 'webgpu') {
-        if (isWebGPUMemoryError) {
-          console.warn('[InferenceService] WebGPU buffer allocation failed, falling back to WASM...');
-          if (onProgress) onProgress('WebGPU memory limit hit. Switching to WASM...');
-        } else {
-          console.warn('[InferenceService] WebGPU not supported in this environment, falling back to WASM...');
-          if (onProgress) onProgress('WebGPU unavailable. Switching to WASM...');
-        }
-
-        // Retry with WASM
-        device = 'wasm';
-        dtype = 'q8';
-        sessionOptions = getSessionOptions(device, dtype);
-
-        // Explicitly download the WASM model files so the user sees progress
-        await this.preDownloadModels(modelId, sessionOptions, onProgress);
-
-        const model = await AutoModelForVision2Seq.from_pretrained(modelId, sessionOptions) as VisionEncoderDecoderModel;
-        return { model, device, dtype };
-      } else {
-        throw loadError;
-      }
-    }
-  }
 
   private abortController: AbortController | null = null;
   private currentInferencePromise: Promise<void> | null = null;
