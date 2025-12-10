@@ -8,6 +8,7 @@ export class DownloadManager {
   private queue: Array<() => Promise<void>> = [];
   private runningCount: number = 0;
   private readonly MAX_CONCURRENT = 3;
+  private readonly ENABLE_CORRUPTION_CHECK = false;
 
   private constructor() { }
 
@@ -38,18 +39,23 @@ export class DownloadManager {
         const cachedResponse = await cache.match(url);
 
         if (cachedResponse) {
-          const contentLength = cachedResponse.headers.get('Content-Length');
-          const expectedSize = contentLength ? parseInt(contentLength, 10) : 0;
-          const actualBlob = await cachedResponse.clone().blob();
+          // Optimization: Skip corruption check by default
+          if (this.ENABLE_CORRUPTION_CHECK) {
+            const contentLength = cachedResponse.headers.get('Content-Length');
+            const expectedSize = contentLength ? parseInt(contentLength, 10) : 0;
+            const actualBlob = await cachedResponse.clone().blob();
 
-          if (expectedSize > 0 && actualBlob.size !== expectedSize) {
-            console.warn(`[DownloadManager] Cached file ${url} is corrupted (size mismatch: ${actualBlob.size} vs ${expectedSize}). Re-downloading.`);
-            await cache.delete(url);
-          } else if (actualBlob.size === 0 && expectedSize > 0) {
-            console.warn(`[DownloadManager] Cached file ${url} is empty. Re-downloading.`);
-            await cache.delete(url);
+            if (expectedSize > 0 && actualBlob.size !== expectedSize) {
+              console.warn(`[DownloadManager] Cached file ${url} is corrupted (size mismatch: ${actualBlob.size} vs ${expectedSize}). Re-downloading.`);
+              await cache.delete(url);
+            } else if (actualBlob.size === 0 && expectedSize > 0) {
+              console.warn(`[DownloadManager] Cached file ${url} is empty. Re-downloading.`);
+              await cache.delete(url);
+            } else {
+              return; // Valid cache, skip download
+            }
           } else {
-            return; // Valid cache, skip download
+            return; // Assume valid cache
           }
         }
 
