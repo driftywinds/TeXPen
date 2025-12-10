@@ -20,10 +20,13 @@ export const ProgressToast: React.FC<ProgressToastProps> = ({ phase, progress })
                     {parts.map((part, i) => (
                         <span key={i} className="whitespace-nowrap">
                             {part.trim()}
-                            {/* Show global percentage on the last line if it exists */}
-                            {i === parts.length - 1 && progress > 0 && ` (${Math.round(progress)}%)`}
                         </span>
                     ))}
+                    {progress > 0 && (
+                        <span className="whitespace-nowrap text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            Total: {Math.round(progress)}%
+                        </span>
+                    )}
                 </div>
             </div>
         </div>
