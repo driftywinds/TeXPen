@@ -1,8 +1,9 @@
 import { Tensor } from '@huggingface/transformers';
+import { MODEL_CONFIG } from './config';
 
-export const FIXED_IMG_SIZE = 448;
-export const IMAGE_MEAN = 0.9545467;
-export const IMAGE_STD = 0.15394445;
+export const FIXED_IMG_SIZE = MODEL_CONFIG.IMAGE_SIZE;
+export const IMAGE_MEAN = MODEL_CONFIG.MEAN[0];
+export const IMAGE_STD = MODEL_CONFIG.STD[0];
 
 // Pre-allocated constants for grayscale conversion (PyTorch standard weights)
 const GRAY_R = 0.299;
