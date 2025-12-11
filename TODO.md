@@ -1,7 +1,6 @@
 Priority
 
 Bugs
-- [ ] If model is already downloaded it says 0.00MB in download progress
 
 Behavior
 

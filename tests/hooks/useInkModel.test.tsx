@@ -142,8 +142,11 @@ describe('useInkModel', () => {
     });
 
     it('allows inference when loaded from cache (auto confirmed)', async () => {
-        // Mock cache hit
-        mockCache.keys.mockResolvedValue([{ url: `https://cdn.huggingface.co/${MODEL_CONFIG.ID}/model_quantized.onnx` }]); // Partial match check in hook
+        // Mock cache hit with the expected Q8 files
+        mockCache.keys.mockResolvedValue([
+            { url: `https://huggingface.co/${MODEL_CONFIG.ID}/resolve/main/onnx/encoder_model_int8.onnx` },
+            { url: `https://huggingface.co/${MODEL_CONFIG.ID}/resolve/main/onnx/decoder_with_past_model_int8.onnx` }
+        ]);
 
         // Mock init to resolve
         (inferenceService.init as any).mockImplementation(async () => {

@@ -67,13 +67,33 @@ export function useInkModel(theme: 'light' | 'dark', quantization: string = MODE
   useEffect(() => {
     async function checkCache() {
       try {
+        const { getSessionOptions } = await import('../services/inference/config');
+
+        // Determine which files we expect based on current settings
+        const sessionOptions = getSessionOptions(provider, quantization);
+        const expectedFiles = [
+          sessionOptions.encoder_model_file_name,
+          sessionOptions.decoder_model_file_name
+        ];
+
         const cache = await caches.open('transformers-cache');
         const requests = await cache.keys();
-        const isCached = requests.some(req => req.url.includes(config.encoderModelUrl));
-        setIsLoadedFromCache(isCached);
-        if (isCached) {
+
+        // Check if ALL expected files are in the cache
+        // We check if the URL contains the filename. 
+        // Ideally we should check modelID + filename, but filename is usually unique enough or we can assume modelID focus.
+        // The URL is usually like: https://huggingface.co/.../resolve/main/onnx/encoder_model.onnx
+        const allCached = expectedFiles.every(file =>
+          requests.some(req => req.url.includes(file))
+        );
+
+        setIsLoadedFromCache(allCached);
+        if (allCached) {
           setUserConfirmed(true);
         } else {
+          // Only reset userConfirmed if we are NOT in the initial load phase (to avoid annoying resets)
+          // But actually, if we switch to a mode that isn't cached, we DO want to ask confirmation again?
+          // Current logic: if cached, auto-confirm. If not, wait for confirm.
           setUserConfirmed(false);
         }
       } catch (error) {
@@ -84,7 +104,7 @@ export function useInkModel(theme: 'light' | 'dark', quantization: string = MODE
       }
     }
     checkCache();
-  }, [config.encoderModelUrl]);
+  }, [config.encoderModelUrl, quantization, provider]);
 
   const prevSettingsRef = useRef<{ quantization: string; provider: string; modelId: string } | null>(null);
 
