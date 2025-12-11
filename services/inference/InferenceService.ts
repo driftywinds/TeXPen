@@ -273,99 +273,23 @@ export class InferenceService {
       const repetitionPenalty =
         generationConfig.repetition_penalty || 1.0;
 
-      const doSample = req.options.do_sample || false;
-      const effectiveNumBeams = req.options.num_beams || 1;
+      // 3) Generate candidates using hybrid strategy
+      const startGeneration = performance.now();
 
-      // 3) Hybrid Decoding Strategy
-      // If do_sample is true, use model.generate (transformers.js supports sampling)
-      // If numCandidates == 1, use optimized greedy from transformers.js directly (faster, more stable)
-      // If numCandidates > 1, use custom beam search (until transformers.js supports num_return_sequences for this path)
-      let candidates: string[] = [];
+      const candidates = await this.generateCandidates(
+        pixelValues,
+        generationConfig,
+        repetitionPenalty,
+        req.options,
+        signal
+      );
 
-      // OPTIMIZATION: If only 1 candidate is requested, force greedy decoding even if sampling is enabled.
-      // This is generally faster and desired by the user for single-candidate generation.
-      if (effectiveNumBeams === 1) {
-        // Force disable sampling for single candidate optimization
-        // doSample = false; // const assignment - need to handle largely logic
-      }
-
-      if ((doSample && effectiveNumBeams > 1) || effectiveNumBeams === 1) {
-        const startGeneration = performance.now();
-
-        const generateOptions: any = {
-          inputs: pixelValues,
-          max_new_tokens: generationConfig.max_new_tokens,
-          repetition_penalty: repetitionPenalty,
-          decoder_start_token_id: generationConfig.decoder_start_token_id,
-        };
-
-        if (doSample && effectiveNumBeams > 1) {
-          generateOptions.do_sample = true;
-          generateOptions.temperature = req.options.temperature;
-          generateOptions.top_k = req.options.top_k;
-          generateOptions.top_p = req.options.top_p;
-
-          if (isDev) {
-            console.log('[InferenceService] Sampling options:', generateOptions);
-          }
-
-          if (effectiveNumBeams > 1) {
-            // Manual loop to ensure we get multiple candidates
-            const promises = [];
-            for (let i = 0; i < effectiveNumBeams; i++) {
-              promises.push(this.model!.generate({ ...generateOptions }));
-            }
-
-            const results = await Promise.all(promises);
-
-            for (const outputTokenIds of results) {
-              const decoded = this.tokenizer!.batch_decode(outputTokenIds, {
-                skip_special_tokens: true,
-              });
-              candidates.push(...decoded);
-            }
-          } else {
-            // Single sample
-            const outputTokenIds = await this.model!.generate(generateOptions);
-            const decoded = this.tokenizer!.batch_decode(outputTokenIds, {
-              skip_special_tokens: true,
-            });
-            candidates = decoded;
-          }
-        } else {
-          // Greedy
-          // @ts-ignore
-          const outputTokenIds = await this.model!.generate(generateOptions);
-          const decoded = this.tokenizer!.batch_decode(outputTokenIds, {
-            skip_special_tokens: true,
-          });
-          candidates = decoded;
-        }
-
-        timings.generation = performance.now() - startGeneration;
-
-        if (signal.aborted) throw new Error("Aborted");
-        // candidates populated
-      } else {
-        // Batched beam search for n > 1 (Deterministic)
-        const startGeneration = performance.now();
-        candidates = await beamSearch(
-          this.model!,
-          this.tokenizer!,
-          pixelValues,
-          effectiveNumBeams,
-          signal,
-          generationConfig.max_new_tokens,
-          repetitionPenalty,
-          generationConfig.decoder_start_token_id
-        );
-        timings.generation = performance.now() - startGeneration;
-      }
+      timings.generation = performance.now() - startGeneration;
 
       if (signal.aborted) throw new Error("Aborted");
 
       // 4) Post-process LaTeX
-      candidates = candidates.map((c) => this.postprocess(c));
+      const processedCandidates = candidates.map((c) => this.postprocess(c));
       timings.total = performance.now() - startTotal;
 
       if (isDev) {
@@ -377,14 +301,13 @@ export class InferenceService {
           `generation=${timings.generation?.toFixed(
             1
           )}ms, ` +
-          `total=${timings.total?.toFixed(1)}ms` +
-          ` (mode: ${doSample ? "sampling" : (effectiveNumBeams === 1 ? "greedy/native" : "beam/custom")})`
+          `total=${timings.total?.toFixed(1)}ms`
         );
       }
 
       req.resolve({
-        latex: candidates[0] || "",
-        candidates,
+        latex: processedCandidates[0] || "",
+        candidates: processedCandidates,
         debugImage,
       });
     } catch (e: any) {
@@ -402,6 +325,99 @@ export class InferenceService {
       // isInferring is handled by queue
     }
   }
+
+  private async generateCandidates(
+    pixelValues: Tensor,
+    generationConfig: any,
+    repetitionPenalty: number,
+    options: SamplingOptions,
+    signal: AbortSignal
+  ): Promise<string[]> {
+    const isDev = (import.meta as any).env?.DEV ?? false;
+    let candidates: string[] = [];
+
+    const doSample = options.do_sample || false;
+    let effectiveNumBeams = options.num_beams || 1;
+
+    // OPTIMIZATION: If only 1 candidate is requested, force greedy decoding even if sampling is enabled.
+    if (effectiveNumBeams === 1) {
+      // effectiveNumBeams is already 1, effectively disabling specialized beam search paths
+      // We handle the actual forced greedy logic in the conditional below
+    }
+
+    // Hybrid strategy:
+    // 1. Greedy (num_beams=1) -> Use optimal transformers.js generate
+    // 2. Sampling (do_sample=true && num_beams>1) -> Use transformers.js generate with manual loop
+    // 3. Beam Search (num_beams>1 && do_sample=false) -> Use custom beam search
+
+    // Determine if we should treat this as a "generate" (greedy/sample) or "beam search" call
+    // Force greedy if num_beams=1 even if doSample is true (optimization)
+    const useGenerate = (doSample && effectiveNumBeams > 1) || effectiveNumBeams === 1;
+
+    if (useGenerate) {
+      const generateOptions: any = {
+        inputs: pixelValues,
+        max_new_tokens: generationConfig.max_new_tokens,
+        repetition_penalty: repetitionPenalty,
+        decoder_start_token_id: generationConfig.decoder_start_token_id,
+      };
+
+      if (doSample && effectiveNumBeams > 1) {
+        generateOptions.do_sample = true;
+        generateOptions.temperature = options.temperature;
+        generateOptions.top_k = options.top_k;
+        generateOptions.top_p = options.top_p;
+
+        if (isDev) {
+          console.log('[InferenceService] Sampling options:', generateOptions);
+        }
+
+        // Manual loop to ensure we get multiple candidates
+        const promises = [];
+        for (let i = 0; i < effectiveNumBeams; i++) {
+          promises.push(this.model!.generate({ ...generateOptions }));
+        }
+
+        const results = await Promise.all(promises);
+
+        for (const outputTokenIds of results) {
+          const decoded = this.tokenizer!.batch_decode(outputTokenIds, {
+            skip_special_tokens: true,
+          });
+          candidates.push(...decoded);
+        }
+      } else {
+        // Greedy or Single Sample (optimized to greedy if beams=1)
+        // If effectiveNumBeams === 1, we just run generate once.
+        // By default do_sample is false in generateOptions unless we set it.
+        // We intentionally DO NOT set do_sample=true if effectiveNumBeams=1 to force greedy optimization.
+
+        // @ts-ignore
+        const outputTokenIds = await this.model!.generate(generateOptions);
+        const decoded = this.tokenizer!.batch_decode(outputTokenIds, {
+          skip_special_tokens: true,
+        });
+        candidates = decoded;
+      }
+
+      if (signal.aborted) throw new Error("Aborted");
+    } else {
+      // Batched beam search for n > 1 (Deterministic)
+      candidates = await beamSearch(
+        this.model!,
+        this.tokenizer!,
+        pixelValues,
+        effectiveNumBeams,
+        signal,
+        generationConfig.max_new_tokens,
+        repetitionPenalty,
+        generationConfig.decoder_start_token_id
+      );
+    }
+
+    return candidates;
+  }
+
 
   private postprocess(latex: string): string {
     let processed = removeStyle(latex);
