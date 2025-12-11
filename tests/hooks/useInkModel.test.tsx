@@ -2,6 +2,7 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useInkModel } from '../../hooks/useInkModel';
 import { inferenceService } from '../../services/inference/InferenceService';
+import { MODEL_CONFIG } from '../../services/inference/config';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock InferenceService
@@ -43,7 +44,7 @@ describe('useInkModel', () => {
     });
 
     it('initializes in idle state', async () => {
-        const { result } = renderHook(() => useInkModel('light', 'q4', 'wasm'));
+        const { result } = renderHook(() => useInkModel('light', MODEL_CONFIG.QUANTIZATION.Q8, MODEL_CONFIG.PROVIDERS.WASM));
         expect(result.current.status).toBe('idle');
         expect(result.current.isInitialized).toBe(false); // Initially false until cache check
 
@@ -53,7 +54,7 @@ describe('useInkModel', () => {
     });
 
     it('blocks inference when model is loading', async () => {
-        const { result } = renderHook(() => useInkModel('light', 'q4', 'wasm'));
+        const { result } = renderHook(() => useInkModel('light', MODEL_CONFIG.QUANTIZATION.Q8, MODEL_CONFIG.PROVIDERS.WASM));
 
         await waitFor(() => expect(result.current.isInitialized).toBe(true));
 
@@ -86,7 +87,7 @@ describe('useInkModel', () => {
         // Ensure cache is empty
         mockCache.keys.mockResolvedValue([]);
 
-        const { result } = renderHook(() => useInkModel('light', 'q4', 'wasm'));
+        const { result } = renderHook(() => useInkModel('light', MODEL_CONFIG.QUANTIZATION.Q8, MODEL_CONFIG.PROVIDERS.WASM));
 
         await waitFor(() => expect(result.current.isInitialized).toBe(true));
 
@@ -107,9 +108,9 @@ describe('useInkModel', () => {
 
     it('allows inference when loaded from cache (auto confirmed)', async () => {
         // Mock cache hit
-        mockCache.keys.mockResolvedValue([{ url: 'https://cdn.huggingface.co/Ji-Ha/TexTeller3-ONNX-dynamic/model_quantized.onnx' }]); // Partial match check in hook
+        mockCache.keys.mockResolvedValue([{ url: `https://cdn.huggingface.co/${MODEL_CONFIG.ID}/model_quantized.onnx` }]); // Partial match check in hook
 
-        const { result } = renderHook(() => useInkModel('light', 'q4', 'wasm'));
+        const { result } = renderHook(() => useInkModel('light', MODEL_CONFIG.QUANTIZATION.Q8, MODEL_CONFIG.PROVIDERS.WASM));
 
         await waitFor(() => {
             expect(result.current.isLoadedFromCache).toBe(true);

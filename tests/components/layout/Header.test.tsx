@@ -6,6 +6,7 @@ import Header from '../../../components/layout/Header';
 import { AppContext } from '../../../contexts/AppContext';
 import { ThemeContext } from '../../../contexts/ThemeContext';
 import { HistoryContext } from '../../../contexts/HistoryContext';
+import { MODEL_CONFIG } from '../../../services/inference/config';
 
 // Mocks
 vi.mock('../../../components/settings/QuantizationSelector', () => ({
@@ -25,9 +26,9 @@ const defaultAppContext: any = {
     toggleSidebar: mockToggleSidebar,
     numCandidates: 3,
     setNumCandidates: mockSetNumCandidates,
-    quantization: 'q8',
+    quantization: MODEL_CONFIG.QUANTIZATION.Q8,
     setQuantization: vi.fn(),
-    provider: 'webgpu',
+    provider: MODEL_CONFIG.PROVIDERS.WEBGPU,
     setProvider: vi.fn(),
     showVisualDebugger: false,
     setShowVisualDebugger: vi.fn(),

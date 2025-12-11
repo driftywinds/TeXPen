@@ -3,6 +3,7 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useInkModel } from '../../hooks/useInkModel';
 import { inferenceService } from '../../services/inference/InferenceService';
+import { MODEL_CONFIG } from '../../services/inference/config';
 
 // Mock the global caches API
 const mockCache = {
@@ -40,7 +41,7 @@ describe('useInkModel', () => {
   });
 
   it('initializes in idle state', async () => {
-    const { result } = renderHook(() => useInkModel('light', 'fp32', 'webgpu'));
+    const { result } = renderHook(() => useInkModel('light', MODEL_CONFIG.QUANTIZATION.FP32, MODEL_CONFIG.PROVIDERS.WEBGPU as "webgpu"));
 
     // Initial state is idle, not confirmed unless cached
     expect(result.current.status).toBe('idle');
@@ -56,7 +57,7 @@ describe('useInkModel', () => {
   it('detects cached model and auto-confirms', async () => {
     // Mock cache hitting the model
     mockCache.open.mockResolvedValue({
-      keys: vi.fn().mockResolvedValue([{ url: 'some-url/Ji-Ha/TexTeller3-ONNX-dynamic' }]) // Url match
+      keys: vi.fn().mockResolvedValue([{ url: `some-url/${MODEL_CONFIG.ID}` }]) // Url match
     });
 
     const { result } = renderHook(() => useInkModel('light', 'fp32', 'webgpu'));
@@ -68,7 +69,7 @@ describe('useInkModel', () => {
   });
 
   it('starts loading when confirmed', async () => {
-    const { result } = renderHook(() => useInkModel('light', 'fp32', 'webgpu'));
+    const { result } = renderHook(() => useInkModel('light', MODEL_CONFIG.QUANTIZATION.FP32, MODEL_CONFIG.PROVIDERS.WEBGPU as "webgpu"));
 
     // Manually confirm
     act(() => {
@@ -91,14 +92,14 @@ describe('useInkModel', () => {
     // We can't easily catch the 'loading' state in a test without more control, 
     // but we can verify init was called with correct params
     expect(inferenceService.init).toHaveBeenCalledWith(expect.any(Function), {
-      dtype: 'fp32',
-      device: 'webgpu',
+      dtype: MODEL_CONFIG.QUANTIZATION.FP32,
+      device: MODEL_CONFIG.PROVIDERS.WEBGPU,
       modelId: expect.any(String)
     });
   });
 
   it('performs inference when infer is called', async () => {
-    const { result } = renderHook(() => useInkModel('light', 'fp32', 'webgpu'));
+    const { result } = renderHook(() => useInkModel('light', MODEL_CONFIG.QUANTIZATION.FP32, MODEL_CONFIG.PROVIDERS.WEBGPU as "webgpu"));
 
     // Setup: Confirmed and Loaded
     act(() => {
@@ -131,7 +132,7 @@ describe('useInkModel', () => {
   });
 
   it('skips inference if not confirmed and not cached', async () => {
-    const { result } = renderHook(() => useInkModel('light', 'fp32', 'webgpu'));
+    const { result } = renderHook(() => useInkModel('light', MODEL_CONFIG.QUANTIZATION.FP32, MODEL_CONFIG.PROVIDERS.WEBGPU as "webgpu"));
 
     expect(result.current.userConfirmed).toBe(false);
 
@@ -151,7 +152,7 @@ describe('useInkModel', () => {
 
   it('updates config when numCandidates changes', () => {
     // Technically this is just state update, but good to sanity check
-    const { result } = renderHook(() => useInkModel('light', 'fp32', 'webgpu'));
+    const { result } = renderHook(() => useInkModel('light', MODEL_CONFIG.QUANTIZATION.FP32, MODEL_CONFIG.PROVIDERS.WEBGPU as "webgpu"));
 
     act(() => {
       result.current.setNumCandidates(3);

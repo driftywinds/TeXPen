@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { MODEL_CONFIG } from '../../../services/inference/config';
 import { FIXED_IMG_SIZE, IMAGE_MEAN, IMAGE_STD } from '../../../services/inference/imagePreprocessing';
 
 /**
@@ -10,15 +11,15 @@ import { FIXED_IMG_SIZE, IMAGE_MEAN, IMAGE_STD } from '../../../services/inferen
 describe('Image Preprocessing', () => {
   describe('Constants', () => {
     it('has correct image size', () => {
-      expect(FIXED_IMG_SIZE).toBe(448);
+      expect(FIXED_IMG_SIZE).toBe(MODEL_CONFIG.IMAGE_SIZE);
     });
 
     it('has correct normalization mean', () => {
-      expect(IMAGE_MEAN).toBeCloseTo(0.9545467, 5);
+      expect(IMAGE_MEAN).toBeCloseTo(MODEL_CONFIG.MEAN[0], 5);
     });
 
     it('has correct normalization standard deviation', () => {
-      expect(IMAGE_STD).toBeCloseTo(0.15394445, 5);
+      expect(IMAGE_STD).toBeCloseTo(MODEL_CONFIG.STD[0], 5);
     });
 
     it('produces expected white pixel normalization', () => {
