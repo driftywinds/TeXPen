@@ -25,7 +25,8 @@ const DrawTab: React.FC<DrawTabProps> = ({
         activeInferenceTab,
         loadedStrokes,
         sessionId,
-        refreshSession
+        refreshSession,
+        customNotification
     } = useAppContext();
 
     const { theme } = useThemeContext();
@@ -68,7 +69,7 @@ const DrawTab: React.FC<DrawTabProps> = ({
                         initialStrokes={loadedStrokes}
                         onClear={handleClear}
                     />
-                    {status === 'loading' && userConfirmed && renderLoadingOverlay()}
+                    {((status === 'loading' && userConfirmed) || !!customNotification) && renderLoadingOverlay()}
                 </div>
             </div>
         </>

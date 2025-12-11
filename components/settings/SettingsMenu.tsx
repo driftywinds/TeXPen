@@ -317,7 +317,7 @@ export const SettingsMenu: React.FC = () => {
                                                             await downloadManager.deleteFromCache(url);
                                                         }
                                                         await modelLoader.preDownloadModels(modelId, sessionOptions, (status) => {
-                                                            console.log(status);
+                                                            toast(status);
                                                         });
                                                         toast('Repaired corrupted files!');
                                                         setTimeout(() => toast(null), 3000);

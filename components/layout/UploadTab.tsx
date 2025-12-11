@@ -24,7 +24,8 @@ const UploadTab: React.FC<UploadTabProps> = ({
         isInferencing,
         activeInferenceTab,
         uploadPreview,
-        showUploadResult
+        showUploadResult,
+        customNotification
     } = useAppContext();
 
     const isUploadInferencing = isInferencing && activeInferenceTab === 'upload';
@@ -93,7 +94,7 @@ const UploadTab: React.FC<UploadTabProps> = ({
                         </div>
                     )}
                 </div>
-                {status === 'loading' && userConfirmed && renderLoadingOverlay()}
+                {((status === 'loading' && userConfirmed) || !!customNotification) && renderLoadingOverlay()}
             </div>
         </div>
     );
