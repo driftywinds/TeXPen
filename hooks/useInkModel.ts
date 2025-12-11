@@ -97,7 +97,7 @@ export function useInkModel(theme: 'light' | 'dark', quantization: string = MODE
         const { downloadManager } = await import('../services/downloader/DownloadManager');
         downloadManager.setQuotaErrorHandler(async () => {
           return window.confirm(
-            "Couldn't save checkpoints (storage options might be restricted). Continue in memory? (Progress will be lost if you refresh)"
+            "Couldn't save checkpoints to storage (e.g. Incognito Mode). Continue in memory? \n\nNote: The model will need to be re-downloaded next time you visit."
           );
         });
 

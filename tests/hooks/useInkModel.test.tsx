@@ -35,6 +35,14 @@ global.caches = {
     match: vi.fn(),
 } as any;
 
+// Mock services/downloader/DownloadManager
+vi.mock('../../services/downloader/DownloadManager', () => ({
+    downloadManager: {
+        setQuotaErrorHandler: vi.fn(),
+        downloadFile: vi.fn(),
+    }
+}));
+
 
 describe('useInkModel', () => {
     beforeEach(() => {
@@ -73,7 +81,9 @@ describe('useInkModel', () => {
         });
 
         // Verify we are loading
-        expect(result.current.loadingPhase).toContain('Downloading model');
+        await waitFor(() => {
+            expect(result.current.loadingPhase).toContain('Downloading model');
+        });
 
         const canvas = document.createElement('canvas');
         canvas.getContext('2d');
