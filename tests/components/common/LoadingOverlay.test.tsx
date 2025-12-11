@@ -35,13 +35,13 @@ describe('LoadingOverlay', () => {
         expect(mockOpenSettings).toHaveBeenCalledWith('modelId');
     });
 
-    it('opens settings and focuses modelId when Close button is clicked', () => {
+    it('dismisses without opening settings when Close button is clicked', () => {
         render(<LoadingOverlay isDismissed={false} onDismiss={mockOnDismiss} />);
 
-        const closeBtn = screen.getByTitle('Close and configure manually');
+        const closeBtn = screen.getByTitle('Dismiss');
         fireEvent.click(closeBtn);
 
         expect(mockOnDismiss).toHaveBeenCalled();
-        expect(mockOpenSettings).toHaveBeenCalledWith('modelId');
+        expect(mockOpenSettings).not.toHaveBeenCalled();
     });
 });
