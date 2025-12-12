@@ -16,7 +16,7 @@ const CanvasArea: React.FC<CanvasAreaProps> = ({ theme, onStrokeEnd, onClear, in
     const contentCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const strokesRef = useRef<Stroke[]>([]);
     const [activeTool, setActiveTool] = useState<ToolType>('pen');
-    const { saveSnapshot, undo, redo, clear: clearHistory, canUndo, canRedo } = useCanvasHistory();
+    const { saveSnapshot, undo, redo, canUndo, canRedo } = useCanvasHistory();
 
     const setCanvasRef = useCallback((ref: HTMLCanvasElement | null) => {
         canvasRef.current = ref;

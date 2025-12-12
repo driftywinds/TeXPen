@@ -78,15 +78,7 @@ function change(
   }
 }
 
-function findSubstringPositions(str: string, substring: string): number[] {
-  const positions: number[] = [];
-  let pos = str.indexOf(substring);
-  while (pos !== -1) {
-    positions.push(pos);
-    pos = str.indexOf(substring, pos + 1);
-  }
-  return positions;
-}
+
 
 // In the Python version, `change_all` iterates through positions in reverse.
 // However, since `change` (the recursive function) processes the whole string and handles recursion,

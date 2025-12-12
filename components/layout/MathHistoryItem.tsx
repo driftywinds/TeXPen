@@ -16,6 +16,23 @@ const MathHistoryItem: React.FC<{ latex: string }> = ({ latex }) => {
         .replace(/^\$|\$$/g, '')
         .trim();
 
+    const checkResize = React.useCallback(() => {
+        if (ref.current && parentRef.current) {
+            const contentWidth = ref.current.scrollWidth;
+            const containerWidth = parentRef.current.clientWidth;
+
+            // Add padding buffer (Gradient is w-8 = 32px, plus some extra safety)
+            const availableWidth = containerWidth - 40;
+
+            if (contentWidth > availableWidth) {
+                const newScale = Math.max(0.6, availableWidth / contentWidth);
+                setScale(newScale);
+            } else {
+                setScale(1);
+            }
+        }
+    }, []);
+
     useEffect(() => {
         let isMounted = true;
 
@@ -38,24 +55,7 @@ const MathHistoryItem: React.FC<{ latex: string }> = ({ latex }) => {
         return () => {
             isMounted = false;
         };
-    }, [cleanLatex]);
-
-    const checkResize = () => {
-        if (ref.current && parentRef.current) {
-            const contentWidth = ref.current.scrollWidth;
-            const containerWidth = parentRef.current.clientWidth;
-
-            // Add padding buffer (Gradient is w-8 = 32px, plus some extra safety)
-            const availableWidth = containerWidth - 40;
-
-            if (contentWidth > availableWidth) {
-                const newScale = Math.max(0.6, availableWidth / contentWidth);
-                setScale(newScale);
-            } else {
-                setScale(1);
-            }
-        }
-    };
+    }, [cleanLatex, checkResize]);
 
     // Re-check on simple resize (sidebar toggle can affect this, so maybe ResizeObserver is better)
     useEffect(() => {
@@ -70,7 +70,7 @@ const MathHistoryItem: React.FC<{ latex: string }> = ({ latex }) => {
             window.removeEventListener('resize', handleResize);
             observer.disconnect();
         };
-    }, []);
+    }, [checkResize]);
 
     return (
         <div ref={parentRef} className="relative min-h-8 h-auto py-2 flex items-center w-full group/item">

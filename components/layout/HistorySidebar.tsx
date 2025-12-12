@@ -4,7 +4,7 @@ import { HistoryItem } from '../../types';
 import { TrashIcon } from '../common/icons/HistoryIcons';
 import { useHistorySidebar } from '../../hooks/useHistorySidebar';
 import { useAppContext } from '../../contexts/AppContext';
-import { useThemeContext } from '../../contexts/ThemeContext';
+
 import { useHistoryContext } from '../../contexts/HistoryContext';
 import HistoryList from './HistoryList';
 import ClearAllConfirmation from './ClearAllConfirmation';

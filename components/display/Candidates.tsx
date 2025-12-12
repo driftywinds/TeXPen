@@ -19,6 +19,32 @@ const MathCandidateBase: React.FC<{ latex: string }> = ({ latex }) => {
         .replace(/^\$|\$$/g, '')
         .trim();
 
+    const checkResize = React.useCallback(() => {
+        if (ref.current && parentRef.current) {
+            const contentWidth = ref.current.offsetWidth;
+            const contentHeight = ref.current.offsetHeight;
+            const containerWidth = parentRef.current.offsetWidth;
+            const containerHeight = parentRef.current.offsetHeight;
+
+            // Padding buffer
+            const xPadding = 0;
+            const yPadding = 4;
+
+            const availWidth = containerWidth - xPadding;
+            const availHeight = containerHeight - yPadding;
+
+            // Calculate scale to fit both dimensions
+            const scaleX = availWidth / contentWidth;
+            const scaleY = availHeight / contentHeight;
+
+            // Use the smaller scale to ensure it fits entirely
+            // Cap at 1.5 to prevent it from getting absurdly huge on empty space
+            const newScale = Math.min(Math.min(scaleX, scaleY), 1.5);
+
+            setScale(newScale);
+        }
+    }, []);
+
     useEffect(() => {
         let isMounted = true;
 
@@ -47,39 +73,13 @@ const MathCandidateBase: React.FC<{ latex: string }> = ({ latex }) => {
         return () => {
             isMounted = false;
         };
-    }, [cleanLatex]);
-
-    const checkResize = () => {
-        if (ref.current && parentRef.current) {
-            const contentWidth = ref.current.offsetWidth;
-            const contentHeight = ref.current.offsetHeight;
-            const containerWidth = parentRef.current.offsetWidth;
-            const containerHeight = parentRef.current.offsetHeight;
-
-            // Padding buffer
-            const xPadding = 0;
-            const yPadding = 4;
-
-            const availWidth = containerWidth - xPadding;
-            const availHeight = containerHeight - yPadding;
-
-            // Calculate scale to fit both dimensions
-            const scaleX = availWidth / contentWidth;
-            const scaleY = availHeight / contentHeight;
-
-            // Use the smaller scale to ensure it fits entirely
-            // Cap at 1.5 to prevent it from getting absurdly huge on empty space
-            const newScale = Math.min(Math.min(scaleX, scaleY), 1.5);
-
-            setScale(newScale);
-        }
-    };
+    }, [cleanLatex, checkResize]);
 
     // Re-check on window resize
     useEffect(() => {
         window.addEventListener('resize', checkResize);
         return () => window.removeEventListener('resize', checkResize);
-    }, []);
+    }, [checkResize]);
 
     return (
         <div ref={parentRef} className="w-full h-full flex items-center justify-center overflow-hidden">
@@ -104,7 +104,6 @@ const Candidates: React.FC = () => {
         candidates,
         selectedIndex,
         selectCandidate,
-        status,
     } = useAppContext();
 
     return (

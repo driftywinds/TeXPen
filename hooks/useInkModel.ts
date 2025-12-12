@@ -52,7 +52,7 @@ export function useInkModel(theme: 'light' | 'dark', quantization: string = MODE
   const pendingInferenceRef = useRef<{
     canvas: HTMLCanvasElement;
     resolve: (value: { latex: string; candidates: Candidate[]; debugImage: string | null } | null) => void;
-    reject: (reason?: any) => void;
+    reject: (reason?: unknown) => void;
   } | null>(null);
 
   const [loadingPhase, setLoadingPhase] = useState<string>('');
@@ -150,7 +150,7 @@ export function useInkModel(theme: 'light' | 'dark', quantization: string = MODE
       } catch (error) {
         if (isCancelled) return;
         // Check if aborted by user
-        if ((error as any).message?.includes('aborted by user')) {
+        if (error instanceof Error && error.message.includes('aborted by user')) {
           console.log('Model loading aborted by user.');
           setStatus('idle');
           setLoadingPhase('');
@@ -244,9 +244,10 @@ export function useInkModel(theme: 'light' | 'dark', quantization: string = MODE
             setStatus('idle');
             resolve(null);
           }
-        } catch (e: any) {
-          if (e.message === 'Aborted' || e.message === 'Skipped' || e.name === 'AbortError') {
-            console.log('Inference aborted/skipped:', e.message);
+        } catch (e: unknown) {
+          const err = e as Error;
+          if (err.message === 'Aborted' || err.message === 'Skipped' || err.name === 'AbortError') {
+            console.log('Inference aborted/skipped:', err.message);
             resolve(null);
           } else {
             console.error('Inference error:', e);
@@ -294,7 +295,7 @@ export function useInkModel(theme: 'light' | 'dark', quantization: string = MODE
       setStatus('error');
       return null;
     }
-  }, [infer, status]);
+  }, [infer]);
 
   // Process queued inference when model becomes idle (loaded)
   useEffect(() => {

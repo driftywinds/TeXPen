@@ -45,7 +45,7 @@ export const useHistory = () => {
         // - First stroke: Item created. versions = [Item].
         // - Second stroke: Item updated. versions = [Item_v1, Item_v2].
 
-        let newVersions = [...previousVersions];
+        const newVersions = [...previousVersions];
 
         // If versions was empty, it means this was the first item. Add the initial state.
         if (newVersions.length === 0) {

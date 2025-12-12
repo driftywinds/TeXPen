@@ -27,18 +27,18 @@ function padding(image: cv.Mat, requiredSize: number): cv.Mat {
 }
 
 export function transform(image: cv.Mat): Tensor {
-  let trimmed = trimWhiteBorder(image);
+  const trimmed = trimWhiteBorder(image);
   cv.cvtColor(trimmed, trimmed, cv.COLOR_BGR2GRAY);
   const dsize = new cv.Size(FIXED_IMG_SIZE - 1, FIXED_IMG_SIZE - 1);
   cv.resize(trimmed, trimmed, dsize, 0, 0, cv.INTER_CUBIC);
   const padded = padding(trimmed, FIXED_IMG_SIZE);
   trimmed.delete();
-  
+
   const float32Data = new Float32Array(padded.data.length);
   for (let i = 0; i < padded.data.length; i++) {
     float32Data[i] = (padded.data[i] / 255.0 - IMAGE_MEAN) / IMAGE_STD;
   }
-  
+
   const tensor = new Tensor("float32", float32Data, [1, 1, FIXED_IMG_SIZE, FIXED_IMG_SIZE]);
   padded.delete();
   return tensor;

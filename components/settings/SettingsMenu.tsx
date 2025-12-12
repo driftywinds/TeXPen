@@ -3,7 +3,7 @@ import { useAppContext } from '../../contexts/AppContext';
 import { useThemeContext } from '../../contexts/ThemeContext';
 import { useHistoryContext } from '../../contexts/HistoryContext';
 import { ProviderSelector } from './ProviderSelector';
-import { QuantizationSelector } from './QuantizationSelector';
+
 import { MODEL_CONFIG } from '../../services/inference/config';
 import { Tooltip } from '../common/Tooltip';
 import { HelpIcon } from '../common/HelpIcon';
@@ -16,7 +16,6 @@ export const SettingsMenu: React.FC = () => {
     const verifyButtonRef = useRef<HTMLButtonElement>(null);
     const {
         quantization,
-        setQuantization,
         provider,
         setProvider,
         showPreviewInput,
@@ -71,7 +70,7 @@ export const SettingsMenu: React.FC = () => {
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+    }, [closeSettings]);
 
     // Handle auto-focus and selection when settings opens with specific focus target
     useEffect(() => {

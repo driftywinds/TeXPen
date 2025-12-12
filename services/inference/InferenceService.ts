@@ -88,9 +88,9 @@ export class InferenceService {
       // If the model is already loaded, but the quantization or device is different, we need to dispose and reload.
       if (
         (options.dtype &&
-          (this.model as any).config.dtype !== options.dtype) ||
+          this.model.config.dtype !== options.dtype) ||
         (options.device &&
-          (this.model as any).config.device !== options.device) ||
+          this.model.config.device !== options.device) ||
         (options.modelId && this.currentModelId !== options.modelId)
       ) {
         if (this.queue.getIsInferring()) {
@@ -118,9 +118,9 @@ export class InferenceService {
       await this.handleSessionWait(onProgress);
 
       const webgpuAvailable = await isWebGPUAvailable();
-      let device =
+      const device =
         options.device || (webgpuAvailable ? MODEL_CONFIG.PROVIDERS.WEBGPU : MODEL_CONFIG.PROVIDERS.WASM);
-      let dtype =
+      const dtype =
         options.dtype ||
         (webgpuAvailable
           ? MODEL_CONFIG.DEFAULT_QUANTIZATION
@@ -164,7 +164,7 @@ export class InferenceService {
       // CHECK GENERATION AGAIN
       if (this.disposalGeneration !== localGeneration) {
         if (model && "dispose" in model) {
-          await (model as any).dispose();
+          await model.dispose();
         }
         return;
       }
@@ -176,7 +176,7 @@ export class InferenceService {
       // Clear loading flag - we're done
       try {
         sessionStorage.removeItem("__texpen_loading__");
-      } catch (e) {
+      } catch {
         /* ignore */
       }
 
@@ -341,7 +341,7 @@ export class InferenceService {
     let candidates: string[] = [];
 
     const doSample = options.do_sample || false;
-    let effectiveNumBeams = options.num_beams || 1;
+    const effectiveNumBeams = options.num_beams || 1;
 
     // OPTIMIZATION: If only 1 candidate is requested, force greedy decoding even if sampling is enabled.
     if (effectiveNumBeams === 1) {
@@ -396,7 +396,7 @@ export class InferenceService {
         // By default do_sample is false in generateOptions unless we set it.
         // We intentionally DO NOT set do_sample=true if effectiveNumBeams=1 to force greedy optimization.
 
-        // @ts-ignore
+
         const outputTokenIds = await this.model!.generate(generateOptions);
         const decoded = this.tokenizer!.batch_decode(outputTokenIds, {
           skip_special_tokens: true,
@@ -445,10 +445,10 @@ export class InferenceService {
     if (this.model) {
       if (
         "dispose" in this.model &&
-        typeof (this.model as any).dispose === "function"
+        typeof this.model.dispose === "function"
       ) {
         try {
-          await (this.model as any).dispose();
+          await this.model.dispose();
         } catch (e) {
           console.warn("Error disposing model:", e);
         }
@@ -483,13 +483,13 @@ export class InferenceService {
       this.model = null;
       if (
         "dispose" in modelRef &&
-        typeof (modelRef as any).dispose === "function"
+        typeof modelRef.dispose === "function"
       ) {
         // Trigger dispose but don't wait - browser is unloading
         Promise.resolve().then(() => {
           try {
-            (modelRef as any).dispose();
-          } catch (e) {
+            modelRef.dispose();
+          } catch {
             // Ignore - page is unloading anyway
           }
         });
@@ -532,7 +532,7 @@ if (typeof window !== "undefined") {
         "__texpen_unloading__",
         Date.now().toString()
       );
-    } catch (e) {
+    } catch {
       /* ignore storage errors */
     }
     getOrCreateInstance().disposeSync();

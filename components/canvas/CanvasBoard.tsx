@@ -27,15 +27,13 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, onStrokeAdded, r
     const containerRef = useRef<HTMLDivElement>(null);
     const cursorRef = useRef<HTMLDivElement>(null); // Direct DOM Ref for cursor
 
-    // State only for things that change UI structure/mode, NOT high-frequency draw data
-    const [isDrawingState, setIsDrawingState] = useState(false);
+
 
     // Refs for high-frequency data
     const isDrawingRef = useRef(false);
     const lastPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
     const currentPos = useRef<{ x: number; y: number } | null>(null);
     const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const requestRef = useRef<number | null>(null);
 
     // Track strokes for line eraser
     const localStrokesRef = useRef<Stroke[]>([]);
@@ -148,7 +146,6 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, onStrokeAdded, r
         // Draw selection rect
         if (isRectSelecting.current && rectStartPos.current && currentPos.current) {
             // currentPos is screen coords, need scaled
-            const dpr = window.devicePixelRatio || 1;
             // We can't use currentPos.current directly here if it's not scaled or if it's null
             // But processDraw updates lastPos. 
             // Let's use lastPos which is scaled.
@@ -160,7 +157,7 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, onStrokeAdded, r
         if (visibleCanvas) {
             copyToCanvas(canvas, visibleCanvas);
         }
-    }, [theme, selectedStrokeIndices]);
+    }, [theme, selectedStrokeIndices, strokesRef]);
 
     useEffect(() => {
         redrawStrokes();
@@ -219,9 +216,6 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, onStrokeAdded, r
         return () => {
             window.removeEventListener('resize', handleResize);
             resizeObserver.disconnect();
-            if (requestRef.current) {
-                cancelAnimationFrame(requestRef.current);
-            }
         };
     }, [setupCanvas]);
 
@@ -272,7 +266,6 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, onStrokeAdded, r
 
     const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
         isDrawingRef.current = true;
-        setIsDrawingState(true);
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
         const pos = getPos(e.nativeEvent);
@@ -369,6 +362,7 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, onStrokeAdded, r
 
             // Also remove from strokes data for consistency
             // Split strokes instead of deleting them entirely
+            // eslint-disable-next-line react-hooks/immutability
             strokesRef.current = splitStrokes(strokesRef.current, scaledPos, (ERASER_SIZE / 2) * dpr);
 
         } else if (activeTool === 'eraser-line') {
@@ -471,7 +465,6 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, onStrokeAdded, r
     const stopDrawing = () => {
         if (isDrawingRef.current) {
             isDrawingRef.current = false;
-            setIsDrawingState(false);
 
             isDragging.current = false;
             dragStartPos.current = null;

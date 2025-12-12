@@ -1,4 +1,4 @@
-import { PreTrainedModel, PreTrainedTokenizer, Tensor } from '@huggingface/transformers';
+import { PreTrainedModel, Tensor } from '@huggingface/transformers';
 
 export interface InferenceConfig {
   encoderModelUrl: string;
@@ -60,4 +60,6 @@ export interface VisionEncoderDecoderModel extends PreTrainedModel {
   encoder?: VisionEncoder;
   forward: Seq2SeqForward;
   generate: (options: any) => Promise<any>;
+  config: any;
+  dispose: () => Promise<unknown[]>;
 }

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { useAppContext } from '../../contexts/AppContext';
-import { useThemeContext } from '../../contexts/ThemeContext';
+
 import { useHistoryContext } from '../../contexts/HistoryContext';
 import { Stroke } from '../../types/canvas';
 import LiquidBackground from '../common/LiquidBackground';

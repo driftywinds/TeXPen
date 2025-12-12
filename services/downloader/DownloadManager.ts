@@ -45,7 +45,7 @@ export class DownloadManager {
     const task = async () => {
       try {
         // 1. Check if already in browser Cache Storage (transformers.js default location)
-        // @ts-ignore - env.cacheName exists in runtime
+        // @ts-expect-error - env.cacheName exists in runtime
         const cacheName = env.cacheName || 'transformers-cache';
         const cache = await caches.open(cacheName);
         const cachedResponse = await cache.match(url);
@@ -363,7 +363,7 @@ export class DownloadManager {
    * Actually, let's return a specific status.
    */
   public async checkCacheIntegrity(url: string): Promise<{ ok: boolean, reason?: string, missing?: boolean }> {
-    // @ts-ignore
+    // @ts-expect-error
     const cacheName = env.cacheName || 'transformers-cache';
     const cache = await caches.open(cacheName);
     const cachedResponse = await cache.match(url);
@@ -392,7 +392,7 @@ export class DownloadManager {
   }
 
   public async deleteFromCache(url: string): Promise<void> {
-    // @ts-ignore
+    // @ts-expect-error
     const cacheName = env.cacheName || 'transformers-cache';
     const cache = await caches.open(cacheName);
     await cache.delete(url);

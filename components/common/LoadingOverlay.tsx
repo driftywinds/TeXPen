@@ -10,8 +10,6 @@ interface LoadingOverlayProps {
 const LoadingOverlay: React.FC<LoadingOverlayProps> = ({ isDismissed, onDismiss }) => {
     const {
         status,
-        loadingPhase,
-        progress,
         userConfirmed,
         setUserConfirmed,
         isLoadedFromCache,
@@ -93,7 +91,7 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({ isDismissed, onDismiss 
                                 Confirm Model Download
                             </h2>
                             <p className="text-gray-600 dark:text-gray-400 mb-2 text-sm">
-                                The AI models will be downloaded to your browser's cache ({downloadSize}).
+                                The AI models will be downloaded to your browser&apos;s cache ({downloadSize}).
                                 This will only happen once.
                             </p>
                             <p className="text-gray-500 dark:text-gray-500 mb-6 text-xs italic">
