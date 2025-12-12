@@ -38,7 +38,7 @@ export async function getDB(): Promise<IDBPDatabase<DownloadDB> | null> {
         }
 
         const db = await openDB<DownloadDB>('texpen-downloads', 2, {
-          upgrade(db, oldVersion, newVersion, transaction) {
+          upgrade(db, oldVersion, _newVersion, _transaction) {
             // If migrating from v1 or older, we need to clear everything because the schema is incompatible
             if (oldVersion < 2) {
               if (db.objectStoreNames.contains('downloads')) {

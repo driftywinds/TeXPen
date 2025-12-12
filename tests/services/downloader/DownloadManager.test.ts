@@ -13,7 +13,7 @@ vi.mock('../../../services/downloader/db', () => ({
 }));
 
 // Access mocked functions
-import { saveChunk, getDB, getPartialDownload as mockGetPartial, getChunk as mockGetChunk, clearPartialDownload } from '../../../services/downloader/db';
+import { saveChunk, getDB, getPartialDownload as mockGetPartial, getChunk as mockGetChunk } from '../../../services/downloader/db';
 
 describe('DownloadManager', () => {
   let downloadManager: DownloadManager;
