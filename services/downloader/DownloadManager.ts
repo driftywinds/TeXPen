@@ -185,36 +185,21 @@ export class DownloadManager {
     let chunkIndex = 0;
 
     if (partial) {
-      // partial is now Metadata: { chunkCount, totalBytes, ... }
+      // partial is now Metadata: { chunkCount, totalBytes, chunkSizes, ... }
       console.log(`[DownloadManager] Resuming ${url} from ${partial.chunkCount} chunks...`);
-      // We need to calculate startByte. 
-      // If we didn't store individual chunk sizes in metadata, we have to trust totalBytes or sum them up?
-      // Wait, we don't know the size of existing chunks efficiently unless we read them or store running total.
-      // But we know 'totalBytes' in metadata is the *expected* total. That doesn't help with resume position.
-      // We need the size of what we have.
 
-      // FIX: accurately calculate startByte by summing sizes of existing chunks.
-      // Since we split the store, we have to iterate chunks. This is fast (metadata only usually or small blobs).
-      // Or we could have stored 'downloadedBytes' in metadata.
-      // For this immediate refactor, let's just sum them up. It's O(chunks), better than O(bytes).
-
-      // Wait, 'getPartialDownload' only returns metadata. 
-      // Let's iterate.
-      for (let i = 0; i < partial.chunkCount; i++) {
-        const chunk = await getChunk(url, i);
-        if (chunk) {
-          startByte += chunk.size;
-        } else {
-          // Missing a chunk? Broken state.
-          console.warn(`[DownloadManager] Missing chunk ${i} during resume calc. Restarting.`);
-          startByte = 0;
-          chunkIndex = 0;
-          await clearPartialDownload(url);
-          break;
-        }
+      // FIX: accurately calculate startByte by summing sizes of existing chunks using metadata.
+      // This avoids O(N) DB reads of blobs, which crashes mobile browsers.
+      if (partial.chunkSizes && partial.chunkSizes.length === partial.chunkCount) {
+        startByte = partial.chunkSizes.reduce((a, b) => a + b, 0);
+        chunkIndex = partial.chunkCount;
+      } else {
+        // Missing chunkSizes (legacy schema) or mismatch -> Restart
+        console.warn(`[DownloadManager] Missing chunkSizes in metadata for ${url}. Restarting.`);
+        startByte = 0;
+        chunkIndex = 0;
+        await clearPartialDownload(url);
       }
-      chunkIndex = partial.chunkCount;
-      // If we broke loop, startByte is 0.
     }
 
     // 3. Fetch with Range

@@ -7,6 +7,7 @@ interface DownloadDB extends DBSchema {
       url: string;
       totalBytes: number;
       chunkCount: number;
+      chunkSizes: number[]; // size of each chunk in order
       etag: string | null;
       lastModified: number;
     };
@@ -37,12 +38,16 @@ export async function getDB(): Promise<IDBPDatabase<DownloadDB> | null> {
           return null;
         }
 
-        const db = await openDB<DownloadDB>('texpen-downloads', 2, {
+        const db = await openDB<DownloadDB>('texpen-downloads', 3, {
           upgrade(db, oldVersion, _newVersion, _transaction) {
-            // If migrating from v1 or older, we need to clear everything because the schema is incompatible
-            if (oldVersion < 2) {
+            // If migrating from v2 or older, we need to clear everything because the schema is incompatible
+            // (we added chunkSizes which is required for resume)
+            if (oldVersion < 3) {
               if (db.objectStoreNames.contains('downloads')) {
                 db.deleteObjectStore('downloads');
+              }
+              if (db.objectStoreNames.contains('chunks')) {
+                db.deleteObjectStore('chunks');
               }
               // Create new stores
               db.createObjectStore('downloads', { keyPath: 'url' });
@@ -87,6 +92,7 @@ export async function saveChunk(url: string, chunk: Blob, totalBytes: number, ch
       url,
       totalBytes,
       chunkCount: 0,
+      chunkSizes: [],
       etag,
       lastModified: Date.now(),
     };
@@ -96,6 +102,10 @@ export async function saveChunk(url: string, chunk: Blob, totalBytes: number, ch
   await chunkStore.put(chunk, [url, chunkIndex]);
 
   // 4. Update Metadata
+  // We need to ensure the chunkSizes array is correct.
+  // Ideally chunkIndex is strictly increasing 0, 1, 2...
+  // But if we override a chunk, we should update the size.
+  entry.chunkSizes[chunkIndex] = chunk.size;
   entry.chunkCount = Math.max(entry.chunkCount, chunkIndex + 1);
   entry.lastModified = Date.now();
   entry.totalBytes = totalBytes; // Ensure total is set
