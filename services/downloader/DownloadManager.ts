@@ -314,6 +314,8 @@ export class DownloadManager {
                 if (!shouldContinue) {
                   throw new Error('Download aborted by user due to storage quota limits.');
                 }
+                // Ensure we switch to memory mode if we continue, protecting against race conditions
+                this.isIDBDisabled = true;
               } else {
                 // We are the first to hit the error
                 if (this.quotaErrorHandler) {

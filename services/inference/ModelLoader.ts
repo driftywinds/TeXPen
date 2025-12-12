@@ -70,17 +70,17 @@ export class ModelLoader {
 
     const runDownload = async (file: string) => {
       const fileUrl = `https://huggingface.co/${modelId}/resolve/main/${file}`;
-      try {
-        await downloadManager.downloadFile(fileUrl, (p) => {
-          progressState[file] = { loaded: p.loaded, total: p.total };
-          updateProgress();
-        });
-      } catch (e) {
-        console.warn(`[ModelLoader] Pre-download skipped for ${file}:`, e);
-      }
+      // Do not catch errors here; let Promise.all fail so we stop the loading process
+      await downloadManager.downloadFile(fileUrl, (p) => {
+        progressState[file] = { loaded: p.loaded, total: p.total };
+        updateProgress();
+      });
     };
 
-    await Promise.all(commonFiles.map((file) => runDownload(file)));
+    // Use sequential download to improve stability on mobile devices by avoiding resource contention
+    for (const file of commonFiles) {
+      await runDownload(file);
+    }
   }
 
   public async loadModelWithFallback(
