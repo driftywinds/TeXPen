@@ -173,7 +173,17 @@ export class DownloadManager {
   }
 
   private async _performDownload(url: string, cache: Cache, onProgress?: (progress: DownloadProgress) => void): Promise<void> {
-    // 2. Check partial download in IndexedDB
+    // 1. Proactive IDB availability check - detect early instead of failing on first saveChunk
+    // This helps on mobile browsers where IDB is often unavailable (private mode, etc.)
+    if (!this.isIDBDisabled) {
+      const db = await getDB();
+      if (!db) {
+        console.warn('[DownloadManager] IndexedDB is unavailable. Falling back to memory-only mode.');
+        this.isIDBDisabled = true;
+      }
+    }
+
+    // 2. Check partial download in IndexedDB (will return null if IDB unavailable)
     const partial = await getPartialDownload(url);
     let startByte = 0;
     let chunks: (Blob | Uint8Array)[] = [];
