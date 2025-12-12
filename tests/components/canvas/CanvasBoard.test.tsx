@@ -3,9 +3,10 @@ import React from 'react';
 import { render, fireEvent, act } from '@testing-library/react';
 import CanvasBoard from '../../../components/canvas/CanvasBoard';
 import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest';
-import { Stroke, ToolType } from '../../../types/canvas';
+import { Stroke } from '../../../types/canvas';
 
 describe('CanvasBoard Selection & Move', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let mockCtx: any;
 
     let originalCreateElement: typeof document.createElement;
@@ -58,7 +59,7 @@ describe('CanvasBoard Selection & Move', () => {
                 canvas.getContext = vi.fn((type) => {
                     if (type === '2d') return mockCtx;
                     return null;
-                }) as any;
+                }) as unknown as typeof canvas.getContext;
 
                 // Mock getBoundingClientRect for coordinate calculations
                 canvas.getBoundingClientRect = () => ({
@@ -418,7 +419,7 @@ describe('CanvasBoard Selection & Move', () => {
         // 2. Select the stroke (click) - this interaction should cancel/reset timer
         // Note: activeTool is still pen. We need to switch to select to move.
         // Rerender with select tool
-        const { rerender } = render(
+        render(
             <CanvasBoard
                 activeTool="select-rect"
                 theme="light"

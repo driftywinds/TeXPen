@@ -3,6 +3,7 @@ import { useAppContext } from '../../contexts/AppContext';
 
 import { useHistoryContext } from '../../contexts/HistoryContext';
 import { Stroke } from '../../types/canvas';
+import { HistoryItem } from '../../types';
 import LiquidBackground from '../common/LiquidBackground';
 import Header from './Header';
 import HistorySidebar from './HistorySidebar';
@@ -139,7 +140,7 @@ const Main: React.FC = () => {
         }
     };
 
-    const handleHistorySelect = (item: any) => {
+    const handleHistorySelect = (item: HistoryItem) => {
         if (item.source === 'upload' && item.imageData) {
             setUploadPreview(item.imageData);
             setShowUploadResult(true);

@@ -248,7 +248,7 @@ function trimWhiteBorder(imageData: ImageData): ImageData {
   const tempCtx = getOptimizedContext(tempCanvas);
   tempCtx.putImageData(imageData, 0, 0);
 
-  ctx.drawImage(tempCanvas as any, minX, minY, w, h, 0, 0, w, h);
+  ctx.drawImage(tempCanvas as CanvasImageSource, minX, minY, w, h, 0, 0, w, h);
   return ctx.getImageData(0, 0, w, h);
 }
 
@@ -280,7 +280,7 @@ function resizeAndPad(imageData: ImageData, targetSize: number): HTMLCanvasEleme
 
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(tempCanvas as any, 0, 0, width, height, 0, 0, newW, newH);
+  ctx.drawImage(tempCanvas as CanvasImageSource, 0, 0, width, height, 0, 0, newW, newH);
 
   return canvas;
 }

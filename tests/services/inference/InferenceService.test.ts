@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeEach, afterEach, vi, beforeAll } from 'vitest';
 import { InferenceService } from '../../../services/inference/InferenceService';
 import { InferenceOptions } from '../../../services/inference/types';
@@ -68,7 +69,9 @@ describe('InferenceService Integration (Efficient)', () => {
   afterEach(async () => {
     try {
       // Cleanup if needed
-    } catch (e) { }
+    } catch (_e) {
+      // ignore
+    }
   });
 
   it('should attempt initialization and download without hitting network (Legit Flow)', async () => {

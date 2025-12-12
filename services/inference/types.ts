@@ -1,4 +1,4 @@
-import { PreTrainedModel, Tensor } from '@huggingface/transformers';
+import { PreTrainedModel, Tensor, PretrainedConfig } from '@huggingface/transformers';
 
 export interface InferenceConfig {
   encoderModelUrl: string;
@@ -56,11 +56,18 @@ export type Seq2SeqForward = (inputs: {
   use_cache?: boolean
 }) => Promise<Record<string, Tensor>>;
 
+
+export interface InferenceSessionShim {
+  run: (feeds: Record<string, unknown>) => Promise<Record<string, Tensor>>;
+  inputNames: string[];
+  outputNames: string[];
+}
+
 export interface VisionEncoderDecoderModel extends PreTrainedModel {
   encoder?: VisionEncoder;
   forward: Seq2SeqForward;
   generate: (options: Record<string, unknown>) => Promise<unknown>;
-  config: Record<string, unknown>;
-  sessions?: Record<string, any>;
+  config: PretrainedConfig & { decoder?: Record<string, unknown>; d_model?: number; hidden_size?: number; decoder_attention_heads?: number; num_attention_heads?: number;[key: string]: unknown; };
+  sessions: Record<string, InferenceSessionShim>;
   dispose: () => Promise<unknown[]>;
 }

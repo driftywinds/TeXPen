@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useInkModel } from '../../hooks/useInkModel';
 import { inferenceService } from '../../services/inference/InferenceService';

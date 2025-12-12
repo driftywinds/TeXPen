@@ -1,7 +1,8 @@
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { InferenceService } from '../../../services/inference/InferenceService';
-import { InferenceOptions, SamplingOptions } from '../../../services/inference/types';
+import { SamplingOptions } from '../../../services/inference/types';
 
 // Mock dependencies
 vi.mock('../../../services/inference/imagePreprocessing', () => ({

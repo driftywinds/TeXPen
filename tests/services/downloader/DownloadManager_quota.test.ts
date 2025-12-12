@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach, Mock } from 'vitest';
 import { DownloadManager } from '../../../services/downloader/DownloadManager';
 import * as db from '../../../services/downloader/db';

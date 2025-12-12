@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
@@ -21,7 +21,7 @@ const mockToggleSidebar = vi.fn();
 const mockSetNumCandidates = vi.fn();
 const mockToggleTheme = vi.fn();
 
-const defaultAppContext: any = {
+const defaultAppContext = {
     isSidebarOpen: true,
     toggleSidebar: mockToggleSidebar,
     numCandidates: 3,
@@ -42,23 +42,23 @@ const defaultAppContext: any = {
     openSettings: vi.fn(),
     closeSettings: vi.fn(),
     settingsFocus: null,
-};
+} as any;
 
-const defaultThemeContext: any = {
+const defaultThemeContext = {
     theme: 'light',
     toggleTheme: mockToggleTheme,
-};
+} as any;
 
-const defaultHistoryContext: any = {
+const defaultHistoryContext = {
     history: [],
     addToHistory: vi.fn(),
     deleteHistoryItem: vi.fn(),
     clearHistory: vi.fn(),
     filterMode: 'all',
     setFilterMode: vi.fn(),
-};
+} as any;
 
-const renderHeader = (appOverrides = {}, themeOverrides = {}) => {
+const renderHeader = (appOverrides: any = {}, themeOverrides: any = {}) => {
     return render(
         <ThemeContext.Provider value={{ ...defaultThemeContext, ...themeOverrides }}>
             <AppContext.Provider value={{ ...defaultAppContext, ...appOverrides }}>

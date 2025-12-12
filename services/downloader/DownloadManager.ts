@@ -363,7 +363,7 @@ export class DownloadManager {
    * Actually, let's return a specific status.
    */
   public async checkCacheIntegrity(url: string): Promise<{ ok: boolean, reason?: string, missing?: boolean }> {
-    // @ts-expect-error
+    // @ts-expect-error - env.cacheName exists in runtime but is missing from type definitions
     const cacheName = env.cacheName || 'transformers-cache';
     const cache = await caches.open(cacheName);
     const cachedResponse = await cache.match(url);
@@ -392,7 +392,7 @@ export class DownloadManager {
   }
 
   public async deleteFromCache(url: string): Promise<void> {
-    // @ts-expect-error
+    // @ts-expect-error - env.cacheName exists in runtime but is missing from type definitions
     const cacheName = env.cacheName || 'transformers-cache';
     const cache = await caches.open(cacheName);
     await cache.delete(url);

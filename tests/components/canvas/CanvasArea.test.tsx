@@ -3,12 +3,13 @@ import React, { useEffect } from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import CanvasArea from '../../../components/canvas/CanvasArea';
 import { describe, it, expect, vi } from 'vitest';
+import { Stroke } from '../../../types/canvas';
 
 // Mock CanvasBoard to expose callbacks for testing
 let capturedOnStrokeAdded: (() => void) | undefined;
 
 vi.mock('../../../components/canvas/CanvasBoard', () => ({
-    default: function MockCanvasBoard({ refCallback, contentRefCallback, onStrokeAdded }: any) {
+    default: function MockCanvasBoard({ refCallback, contentRefCallback, onStrokeAdded }: { refCallback: (el: HTMLCanvasElement) => void, contentRefCallback: (el: HTMLCanvasElement) => void, onStrokeAdded: () => void }) {
         capturedOnStrokeAdded = onStrokeAdded;
         useEffect(() => {
             // Create mock canvas elements
@@ -51,7 +52,7 @@ describe('CanvasArea', () => {
         const mockOnClear = vi.fn();
         const mockOnStrokeEnd = vi.fn();
 
-        const initialStrokes: any[] = [
+        const initialStrokes: Stroke[] = [
             {
                 tool: 'pen',
                 color: '#000000',
@@ -77,13 +78,13 @@ describe('CanvasArea', () => {
             resetTransform: vi.fn(),
             getImageData: vi.fn(() => ({ data: [], width: 100, height: 100 })),
             putImageData: vi.fn(),
-        } as any;
+        } as unknown as CanvasRenderingContext2D;
 
         const originalCreateElement = document.createElement.bind(document);
         vi.spyOn(document, 'createElement').mockImplementation((tagName, options) => {
             if (tagName === 'canvas') {
                 const canvas = originalCreateElement(tagName, options) as HTMLCanvasElement;
-                canvas.getContext = vi.fn(() => mockCtx);
+                canvas.getContext = vi.fn(() => mockCtx) as unknown as typeof canvas.getContext;
                 return canvas;
             }
             return originalCreateElement(tagName, options);
@@ -110,7 +111,7 @@ describe('CanvasArea', () => {
         const mockOnClear = vi.fn();
         const mockOnStrokeEnd = vi.fn();
 
-        const initialStrokes: any[] = [
+        const initialStrokes: Stroke[] = [
             {
                 tool: 'pen',
                 color: '#000000',
@@ -136,13 +137,13 @@ describe('CanvasArea', () => {
             resetTransform: vi.fn(),
             getImageData: vi.fn(() => ({ data: [], width: 100, height: 100 })),
             putImageData: vi.fn(),
-        } as any;
+        } as unknown as CanvasRenderingContext2D;
 
         const originalCreateElement = document.createElement.bind(document);
         vi.spyOn(document, 'createElement').mockImplementation((tagName, options) => {
             if (tagName === 'canvas') {
                 const canvas = originalCreateElement(tagName, options) as HTMLCanvasElement;
-                canvas.getContext = vi.fn(() => mockCtx);
+                canvas.getContext = vi.fn(() => mockCtx) as unknown as typeof canvas.getContext;
                 return canvas;
             }
             return originalCreateElement(tagName, options);
@@ -181,13 +182,13 @@ describe('CanvasArea', () => {
             save: vi.fn(),
             restore: vi.fn(),
             resetTransform: vi.fn()
-        } as any;
+        } as unknown as CanvasRenderingContext2D;
 
         const originalCreateElement = document.createElement.bind(document);
         vi.spyOn(document, 'createElement').mockImplementation((tagName, options) => {
             if (tagName === 'canvas') {
                 const canvas = originalCreateElement(tagName, options) as HTMLCanvasElement;
-                canvas.getContext = vi.fn(() => mockCtx);
+                canvas.getContext = vi.fn(() => mockCtx) as unknown as typeof canvas.getContext;
                 // Mock width/height
                 Object.defineProperty(canvas, 'width', { value: 100 });
                 Object.defineProperty(canvas, 'height', { value: 100 });

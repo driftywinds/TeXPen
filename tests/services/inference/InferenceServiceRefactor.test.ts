@@ -1,7 +1,8 @@
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { InferenceService } from '../../../services/inference/InferenceService';
-import { InferenceOptions, SamplingOptions } from '../../../services/inference/types';
+import { SamplingOptions } from '../../../services/inference/types';
 
 // Mock dependencies
 vi.mock('../../../services/inference/imagePreprocessing', () => ({
@@ -100,7 +101,7 @@ describe('InferenceService Refactor Logic', () => {
     // but here we just count calls.
     mockModel.generate.mockResolvedValue([[101]]);
 
-    const result = await service.infer(blob, options);
+    await service.infer(blob, options);
 
     // Should call generate 2 times (manual loop)
     expect(mockModel.generate).toHaveBeenCalledTimes(2);

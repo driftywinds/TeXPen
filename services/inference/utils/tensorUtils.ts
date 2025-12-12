@@ -16,18 +16,18 @@ export async function sliceTensorBatch(t: Tensor, indices: number[]): Promise<Te
   }
 
   // Use getData() if available (ORT/WebGPU), otherwise fall back to .data
-  let dataAny: any;
-  const tt: any = t;
-  if (typeof tt.getData === "function") {
-    dataAny = await tt.getData();
+  let dataAny: Float32Array | Int32Array | Uint8Array | Float64Array | Int8Array | Int16Array | Uint16Array | Uint32Array | BigInt64Array | BigUint64Array | Uint8ClampedArray;
+
+  if (typeof (t as unknown as { getData: () => Promise<unknown> }).getData === "function") {
+    dataAny = await (t as unknown as { getData: () => Promise<unknown> }).getData() as typeof dataAny;
   } else {
-    dataAny = tt.data;
+    dataAny = (t as unknown as { data: typeof dataAny }).data;
   }
 
   const totalSize = dataAny.length;
   const rowSize = totalSize / oldBatch;
 
-  const ArrayCtor = dataAny.constructor as { new(len: number): any };
+  const ArrayCtor = dataAny.constructor as new (len: number) => typeof dataAny;
   const newData = new ArrayCtor(indices.length * rowSize);
 
   for (let newRow = 0; newRow < indices.length; newRow++) {
@@ -40,11 +40,13 @@ export async function sliceTensorBatch(t: Tensor, indices: number[]): Promise<Te
     const srcStart = origRow * rowSize;
     const dstStart = newRow * rowSize;
     const slice = dataAny.subarray(srcStart, srcStart + rowSize);
-    newData.set(slice, dstStart);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (newData as any).set(slice, dstStart);
   }
 
-  const dtype = (t as any).dtype ?? (t as any).type ?? "float32";
-  const newTensor = new Tensor(dtype, newData, [indices.length, ...dims.slice(1)]);
+  const dtype = (t as unknown as { dtype?: string; type?: string }).dtype ?? (t as unknown as { dtype?: string; type?: string }).type ?? "float32";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const newTensor = new Tensor(dtype as any, newData, [indices.length, ...dims.slice(1)]);
   /* logToWindow("sliceTensorBatch output:", { dtype, dims: newTensor.dims, dataLen: newTensor.data.length }); */
   return newTensor;
 }
@@ -70,15 +72,15 @@ export async function sliceTensorSequence(t: Tensor, start: number, end?: number
   }
 
   // Linear access via .data / .getData()
-  let dataAny: any;
-  const tt: any = t;
+  let dataAny: Float32Array | Int32Array; // Approximating common types
+  const tt = t as unknown as { getData?: () => Promise<Float32Array>; data: Float32Array };
   if (typeof tt.getData === "function") {
     dataAny = await tt.getData();
   } else {
     dataAny = tt.data;
   }
 
-  const ArrayCtor = dataAny.constructor as { new(len: number): any };
+  const ArrayCtor = dataAny.constructor as new (len: number) => typeof dataAny;
   const totalSize = batch * heads * newSeqLen * headDim;
   const newData = new ArrayCtor(totalSize);
 
@@ -92,7 +94,7 @@ export async function sliceTensorSequence(t: Tensor, start: number, end?: number
   const headBlockSize = seqLen * headDim;
   const batchBlockSize = heads * headBlockSize;
 
-  const newHeadBlockSize = newSeqLen * headDim;
+
   const rowSize = headDim;
 
   let dstOffset = 0;
@@ -105,7 +107,8 @@ export async function sliceTensorSequence(t: Tensor, start: number, end?: number
       const srcSeqEnd = srcHeadStart + actualEnd * rowSize;
 
       const slice = dataAny.subarray(srcSeqStart, srcSeqEnd);
-      newData.set(slice, dstOffset);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (newData as any).set(slice, dstOffset);
       dstOffset += slice.length;
     }
   }
@@ -113,8 +116,9 @@ export async function sliceTensorSequence(t: Tensor, start: number, end?: number
   const newDims = [...dims];
   newDims[2] = newSeqLen;
 
-  const dtype = (t as any).dtype ?? (t as any).type ?? "float32";
-  const outT = new Tensor(dtype, newData, newDims);
+  const dtype = (t as unknown as { dtype?: string; type?: string }).dtype ?? (t as unknown as { dtype?: string; type?: string }).type ?? "float32";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const outT = new Tensor(dtype as any, newData, newDims);
   /* logToWindow("sliceTensorSequence output:", { dtype, dims: outT.dims, dataLen: outT.data.length }); */
   return outT;
 }
@@ -139,36 +143,36 @@ export async function sliceFlatCache(
         // This forces re-computation/re-injection of dummy for this key in the next step.
       }
     } else {
-      (out as any)[key] = val as any;
+      (out as Record<string, unknown>)[key] = val;
     }
   }
   return out;
 }
 
 /** Recursively dispose tensors inside a nested cache/outputs structure. */
-export function disposeCache(cache: any): void {
+export function disposeCache(cache: unknown): void {
   if (!cache) return;
   if (Array.isArray(cache)) {
     for (const item of cache) disposeCache(item);
   } else if (typeof cache === "object") {
-    if (typeof (cache as any).dispose === "function") {
-      (cache as any).dispose();
+    if (typeof (cache as { dispose?: () => void }).dispose === "function") {
+      (cache as { dispose: () => void }).dispose();
     } else {
       for (const key of Object.keys(cache)) {
-        disposeCache((cache as any)[key]);
+        disposeCache((cache as Record<string, unknown>)[key]);
       }
     }
   }
 }
 
 /** Heuristic check for transformers.js Tensor / ORT Tensor without touching .data. */
-export function isTensor(x: any): x is Tensor {
+export function isTensor(x: unknown): x is Tensor {
   return (
     x instanceof Tensor ||
     (x &&
       typeof x === "object" &&
-      Array.isArray((x as any).dims) &&
-      (typeof (x as any).getData === "function" ||
-        (x as any).data !== undefined))
+      Array.isArray((x as { dims: unknown }).dims) &&
+      (typeof (x as { getData?: unknown }).getData === "function" ||
+        (x as { data?: unknown }).data !== undefined))
   );
 }

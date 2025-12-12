@@ -4,7 +4,7 @@ export type InferenceRequest = {
   blob: Blob;
   options: import("../types").SamplingOptions;
   resolve: (value: InferenceResult | PromiseLike<InferenceResult>) => void;
-  reject: (reason?: any) => void;
+  reject: (reason?: unknown) => void;
 };
 
 export type InferenceProcessor = (

@@ -1,8 +1,7 @@
-
-import { describe, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest';
 import { DownloadManager } from '../../../services/downloader/DownloadManager';
 import { ModelLoader } from '../../../services/inference/ModelLoader';
-import { MODEL_CONFIG } from '../../../services/inference/config';
 
 // Mock DB
 vi.mock('../../../services/downloader/db', () => ({

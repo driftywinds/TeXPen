@@ -3,7 +3,15 @@ import { GENERATION_CONFIG } from './generation';
 
 export { MODEL_CONFIG, GENERATION_CONFIG };
 
-export function getSessionOptions(device: string, dtype: string) {
+
+export interface SessionConfig {
+  device: string;
+  dtype: string | { encoder_model: string; decoder_with_past_model: string; };
+  encoder_model_file_name: string;
+  decoder_model_file_name: string;
+}
+
+export function getSessionOptions(device: string, dtype: string): SessionConfig {
   // We’ll always choose explicit files per dtype
   if (dtype === 'fp16') {
     return {

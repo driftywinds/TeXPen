@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { render, screen, fireEvent } from '@testing-library/react';
 import LoadingOverlay from '../../../components/common/LoadingOverlay';
 import { useAppContext } from '../../../contexts/AppContext';

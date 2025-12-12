@@ -1,4 +1,5 @@
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { beamSearch } from '../../../services/inference/beamSearch';
 import { Tensor } from '@huggingface/transformers';
@@ -47,7 +48,7 @@ describe('beamSearch Performance', () => {
       eos_token_id: 2,
       bos_token_id: 1,
       pad_token_id: 0,
-      decode: vi.fn((tokens) => `decoded`),
+      decode: vi.fn((_tokens) => `decoded`),
     };
 
     mockPixelValues = new Tensor('float32', [], [1, 3, 224, 224]);

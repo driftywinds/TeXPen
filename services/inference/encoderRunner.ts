@@ -1,11 +1,12 @@
 import { Tensor } from "@huggingface/transformers";
 import { logToWindow } from "./inferenceUtils";
+import { VisionEncoderDecoderModel } from "./types";
 
 /**
  * Helper to run the encoder, handling both standard transformers.js models
  * and manual session fallback if the wrapper is missing.
  */
-export async function runEncoder(model: any, pixelValues: Tensor): Promise<any> {
+export async function runEncoder(model: VisionEncoderDecoderModel, pixelValues: Tensor): Promise<Record<string, Tensor>> {
   logToWindow("[beamSearch] Starting encoder check...");
 
   // Debug keys
@@ -15,7 +16,7 @@ export async function runEncoder(model: any, pixelValues: Tensor): Promise<any> 
   }
   logToWindow("[beamSearch] model.encoder type:", typeof model.encoder);
 
-  let encoderOutputs: any;
+  let encoderOutputs: Record<string, Tensor>;
 
   if (model.encoder) {
     encoderOutputs = await model.encoder({

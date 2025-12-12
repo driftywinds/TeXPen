@@ -5,7 +5,7 @@ import { sliceTensorSequence } from "../utils/tensorUtils";
 
 export interface DecoderInputs {
   pixel_values: Tensor;
-  encoder_outputs: any;
+  encoder_outputs: Record<string, Tensor>;
   encoder_hidden_states: Tensor;
   decoder_input_ids: Tensor;
   past_key_values: Record<string, Tensor> | null;
@@ -40,8 +40,8 @@ export class DecoderRunner {
       );
     }
 
-    const inputNames = (decoderSession as any).inputNames || [];
-    const runInputs: any = {
+    const inputNames = (decoderSession as unknown as { inputNames: string[] }).inputNames || [];
+    const runInputs: Record<string, Tensor> = {
       encoder_hidden_states: encoder_hidden_states,
     };
 
@@ -104,7 +104,7 @@ export class DecoderRunner {
     for (const key of Object.keys(outputs)) {
       if (key.startsWith("present.")) {
         const flatName = key.replace(/^present\./, "past_key_values.");
-        let val = (outputs as any)[key] as Tensor;
+        let val = outputs[key] as Tensor;
 
         // Fallback for invalid (batch 0) outputs - common with some ONNX export/runtime edge cases
         if (val.dims && val.dims[0] === 0) {
@@ -154,9 +154,9 @@ export class DecoderRunner {
       ) {
         continue;
       }
-      const val = (outputs as any)[key];
-      if (val && typeof val.dispose === "function") {
-        val.dispose();
+      const val = outputs[key];
+      if (val && typeof (val as { dispose: () => void }).dispose === "function") {
+        (val as { dispose: () => void }).dispose();
       }
     }
 

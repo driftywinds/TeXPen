@@ -44,7 +44,8 @@ function _formatLatex(oldText: string, file: string, args: Args): [string, Log[]
 
     if (!currentItem) break;
 
-    let { linumOld, line } = currentItem;
+    const { linumOld } = currentItem;
+    let { line } = currentItem;
     const pattern = Pattern.new(line);
 
     const tempState = new State({

@@ -1,8 +1,8 @@
 
 
-import { AutoModelForVision2Seq, Tensor } from '@huggingface/transformers';
+import { AutoModelForVision2Seq } from '@huggingface/transformers';
 import { VisionEncoderDecoderModel } from './types';
-import { getSessionOptions, MODEL_CONFIG } from './config';
+import { getSessionOptions, MODEL_CONFIG, SessionConfig } from './config';
 
 export class ModelLoader {
   private static instance: ModelLoader;
@@ -16,7 +16,7 @@ export class ModelLoader {
     return ModelLoader.instance;
   }
 
-  public async preDownloadModels(modelId: string, sessionOptions: any, onProgress?: (status: string, progress?: number) => void): Promise<void> {
+  public async preDownloadModels(modelId: string, sessionOptions: SessionConfig, onProgress?: (status: string, progress?: number) => void): Promise<void> {
     const { downloadManager } = await import('../downloader/DownloadManager');
     const commonFiles = [
       `onnx/${sessionOptions.encoder_model_file_name}`,
@@ -95,9 +95,10 @@ export class ModelLoader {
     let sessionOptions = getSessionOptions(device, dtype);
 
     try {
-      const model = await AutoModelForVision2Seq.from_pretrained(modelId, sessionOptions as any) as unknown as VisionEncoderDecoderModel;
+      const model = await AutoModelForVision2Seq.from_pretrained(modelId, sessionOptions as unknown as Record<string, unknown>) as unknown as VisionEncoderDecoderModel;
       return { model, device, dtype };
-    } catch (loadError: any) {
+    } catch (err: unknown) {
+      const loadError = err as Error;
       // Check if this is a WebGPU buffer size / memory error OR generic unsupported device error (common in Node env)
       const isWebGPUMemoryError = loadError?.message?.includes('createBuffer') ||
         loadError?.message?.includes('mappedAtCreation') ||
@@ -123,7 +124,7 @@ export class ModelLoader {
         // Explicitly download the WASM model files so the user sees progress
         await this.preDownloadModels(modelId, sessionOptions, onProgress);
 
-        const model = await AutoModelForVision2Seq.from_pretrained(modelId, sessionOptions as any) as unknown as VisionEncoderDecoderModel;
+        const model = await AutoModelForVision2Seq.from_pretrained(modelId, sessionOptions as unknown as Record<string, unknown>) as unknown as VisionEncoderDecoderModel;
         return { model, device, dtype };
       } else {
         throw loadError;
@@ -131,7 +132,7 @@ export class ModelLoader {
     }
   }
 
-  public async validateModelFiles(modelId: string, sessionOptions: any): Promise<string[]> {
+  public async validateModelFiles(modelId: string, sessionOptions: SessionConfig): Promise<string[]> {
     const { downloadManager } = await import('../downloader/DownloadManager');
     const commonFiles = [
       `onnx/${sessionOptions.encoder_model_file_name}`,

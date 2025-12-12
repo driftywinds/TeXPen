@@ -29,7 +29,8 @@ export class LogitsProcessor {
     }
 
     // Read logits data
-    let dataAny: any = logits;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const dataAny: any = logits;
     let rawData: Float32Array;
     if (typeof dataAny.getData === "function") {
       rawData = (await dataAny.getData()) as Float32Array;

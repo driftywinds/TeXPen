@@ -9,7 +9,7 @@ declare global {
  * Log message to specific window global for easy debugging in browser console
  * or via browser automation agent.
  */
-export function logToWindow(msg: string, ...args: any[]) {
+export function logToWindow(msg: string, ...args: unknown[]) {
   const text = `[${new Date().toISOString()}] ${msg} ${args.map(a =>
     typeof a === 'object' ? JSON.stringify(a, (k, v) => {
       if (typeof v === 'bigint') return v.toString();

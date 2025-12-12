@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, expect, test, vi, beforeEach, afterEach } from "vitest";
 import {
   InferenceQueue,
@@ -219,9 +220,10 @@ describe("InferenceQueue", () => {
   });
 
   test("passes options to processor", async () => {
+
     let receivedOptions: any = {};
     const trackingProcessor: InferenceProcessor = vi.fn(
-      async (req: InferenceRequest, signal: AbortSignal) => {
+      async (req: InferenceRequest, _signal: AbortSignal) => {
         receivedOptions = req.options;
         const result: InferenceResult = {
           latex: "test",
