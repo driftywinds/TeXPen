@@ -77,10 +77,9 @@ export class ModelLoader {
       });
     };
 
-    // Use sequential download to improve stability on mobile devices by avoiding resource contention
-    for (const file of commonFiles) {
-      await runDownload(file);
-    }
+    // Use Promise.all to allow parallel downloads, controlled by DownloadManager (max 2)
+    // This allows better saturation of bandwidth on desktop while DownloadManager protects mobile
+    await Promise.all(commonFiles.map(file => runDownload(file)));
   }
 
   public async loadModelWithFallback(
