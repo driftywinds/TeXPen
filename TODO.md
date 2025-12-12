@@ -1,7 +1,6 @@
 Priority
 
 Bugs
-- [ ] Repair download isn't working for corrupted model
 
 Behavior
 

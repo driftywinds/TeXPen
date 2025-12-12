@@ -330,7 +330,8 @@ export class DownloadManager {
     const cacheName = env.cacheName || 'transformers-cache';
     const cache = await caches.open(cacheName);
     await cache.delete(url);
-    console.log(`[DownloadManager] Deleted ${url} from cache.`);
+    await clearPartialDownload(url);
+    console.log(`[DownloadManager] Deleted ${url} from cache and cleared partial download.`);
   }
 
 }
