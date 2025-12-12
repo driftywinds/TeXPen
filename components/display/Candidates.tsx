@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { useAppContext } from '../../contexts/AppContext';
 import { useHistoryContext } from '../../contexts/HistoryContext';
 
@@ -110,20 +110,21 @@ const Candidates: React.FC = () => {
     } = useAppContext();
     const { addToHistory } = useHistoryContext();
 
-    const handleCandidateClick = (index: number) => {
+    const handleCandidateClick = useCallback((index: number) => {
         // Only save to history if selecting a different candidate
         if (index !== selectedIndex && candidates[index]) {
             const candidate = candidates[index];
+            const now = Date.now();
             addToHistory({
-                id: Date.now().toString(),
+                id: now.toString(),
                 latex: candidate.latex,
-                timestamp: Date.now(),
+                timestamp: now,
                 source: activeTab,
                 sessionId,
             });
         }
         selectCandidate(index);
-    };
+    }, [selectedIndex, candidates, addToHistory, activeTab, sessionId, selectCandidate]);
 
     return (
         <div className="flex-none h-20 flex items-center relative z-20 transition-colors duration-500">
