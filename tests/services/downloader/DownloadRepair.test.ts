@@ -102,7 +102,9 @@ describe('Repair Flow Integration', () => {
     // We need to mock sessionOptions to point to our test file
     const sessionOptions = {
       encoder_model_file_name: 'encoder_model.onnx',
-      decoder_model_file_name: 'decoder_model.onnx' // We'll ignore this one for now or mock it as missing
+      decoder_model_file_name: 'decoder_model.onnx',
+      device: 'wasm',
+      dtype: 'fp32'
     };
 
     // Mock validateModelFiles calling checkCacheIntegrity

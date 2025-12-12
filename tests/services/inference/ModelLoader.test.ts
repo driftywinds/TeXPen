@@ -40,7 +40,9 @@ describe('ModelLoader Progress Reporting', () => {
 
     await modelLoader.preDownloadModels('test-model', {
       encoder_model_file_name: 'encoder.onnx',
-      decoder_model_file_name: 'decoder.onnx'
+      decoder_model_file_name: 'decoder.onnx',
+      device: 'wasm',
+      dtype: 'fp32'
     }, onProgress);
 
     // Initial check
