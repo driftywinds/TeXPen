@@ -123,26 +123,36 @@ export class DownloadManager {
   }
 
   // Helper to create a stream that reads sequentially from IndexedDB (Disk Mode)
+  // FIXED: Read all chunks upfront to avoid re-reading entire entry for each chunk
   private createIDBStream(url: string, totalChunks: number): ReadableStream {
     let index = 0;
+    let cachedChunks: (Blob | Uint8Array)[] | null = null;
+
     return new ReadableStream({
       async pull(controller) {
-        if (index < totalChunks) {
-          try {
+        try {
+          // Read all chunks from IDB once on first pull
+          if (cachedChunks === null) {
             const db = await getDB();
             if (!db) {
               controller.error(new Error('IndexedDB became unavailable during stream read'));
               return;
             }
             const entry = await db.get('downloads', url);
+            if (!entry || !entry.chunks) {
+              controller.error(new Error(`Missing entry for ${url} in IDB`));
+              return;
+            }
+            cachedChunks = entry.chunks;
+          }
 
-            // Safety check: entry might have been deleted or corrupted
-            if (!entry || !entry.chunks[index]) {
+          if (index < totalChunks) {
+            const chunk = cachedChunks[index];
+            if (!chunk) {
               controller.error(new Error(`Missing chunk ${index} for ${url} in IDB`));
               return;
             }
 
-            const chunk = entry.chunks[index];
             if (chunk instanceof Blob) {
               const buffer = await new Response(chunk).arrayBuffer();
               controller.enqueue(new Uint8Array(buffer));
@@ -150,11 +160,12 @@ export class DownloadManager {
               controller.enqueue(chunk);
             }
             index++;
-          } catch (e) {
-            controller.error(e);
+          } else {
+            controller.close();
+            cachedChunks = null; // Free memory
           }
-        } else {
-          controller.close();
+        } catch (e) {
+          controller.error(e);
         }
       }
     });

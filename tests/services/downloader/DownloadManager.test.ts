@@ -613,31 +613,29 @@ describe('DownloadManager', () => {
       expect(result.reason).toContain('empty');
     });
 
-    it('should return corrupt if checksum calculation fails (read error)', async () => {
-      const mockUrl = 'https://example.com/unreadable.file';
-      const mockBlob = {
-        size: 100,
-        arrayBuffer: vi.fn().mockRejectedValue(new Error('Read error'))
-      };
-      const mockResponse = {
-        headers: { get: vi.fn().mockReturnValue('100') },
-        clone: vi.fn().mockReturnThis(),
-        blob: vi.fn().mockResolvedValue(mockBlob)
-      };
-      mockCacheMatch.mockResolvedValue(mockResponse);
+    // Note: Checksum calculation was removed from checkCacheIntegrity.
+    // The implementation now verifies file integrity via streaming size comparison
+    // which is more memory-efficient for large files.
+    it('should return ok for file with matching size via streaming', async () => {
+      const mockUrl = 'https://example.com/valid-stream.file';
 
-      // Mock crypto
-      Object.assign(global, {
-        crypto: {
-          subtle: {
-            digest: vi.fn().mockResolvedValue(new ArrayBuffer(32))
-          }
+      // Create a response with a body stream that yields 100 bytes
+      const mockStreamContent = new Uint8Array(100);
+      const mockStream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(mockStreamContent);
+          controller.close();
         }
       });
 
+      const mockResponse = new Response(mockStream, {
+        headers: { 'Content-Length': '100' }
+      });
+
+      mockCacheMatch.mockResolvedValue(mockResponse);
+
       const result = await downloadManager.checkCacheIntegrity(mockUrl);
-      expect(result.ok).toBe(false);
-      expect(result.reason).toContain('Checksum calculation failed');
+      expect(result.ok).toBe(true);
     });
   });
 });
