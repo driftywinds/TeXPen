@@ -1,7 +1,6 @@
 Priority
 
 Bugs
-- [x] Not falling back to WASM correctly if no GPU
 
 Behavior
 

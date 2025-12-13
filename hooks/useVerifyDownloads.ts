@@ -41,7 +41,6 @@ export const useVerifyDownloads = () => {
             isDangerous: false,
             onConfirm: async () => {
               closeDialog();
-              toast('Repairing files...');
               for (const url of corrupted) {
                 await downloadManager.deleteFromCache(url);
               }
