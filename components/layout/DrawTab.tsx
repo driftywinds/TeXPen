@@ -32,7 +32,7 @@ const DrawTab: React.FC<DrawTabProps> = ({
     const { theme } = useThemeContext();
     const { addToHistory } = useHistoryContext();
 
-    const isDrawInferencing = isInferencing && activeInferenceTab === 'draw';
+    const isDrawInferencing = activeInferenceTab === 'draw';
 
     const handleClear = () => {
         if (latex && latex.trim()) {

@@ -28,7 +28,7 @@ const UploadTab: React.FC<UploadTabProps> = ({
         customNotification
     } = useAppContext();
 
-    const isUploadInferencing = isInferencing && activeInferenceTab === 'upload';
+    const isUploadInferencing = activeInferenceTab === 'upload';
 
     return (
         <div className="flex-1 relative overflow-hidden flex flex-col">

@@ -135,6 +135,8 @@ export class InferenceEngine {
           `Loading model ${this.currentModelId} (${preferredDevice})...`
         );
 
+      console.log(`[InferenceEngine] Initializing with device: ${preferredDevice} (Available: ${webgpuAvailable}, Requested: ${options.device})`);
+
       const sessionOptions = getSessionOptions(preferredDevice);
 
       // Pre-download heavy model files using ModelLoader

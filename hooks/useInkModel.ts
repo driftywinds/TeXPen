@@ -4,7 +4,7 @@ import { inferenceService } from '../services/inference/InferenceService';
 
 import { MODEL_CONFIG, GENERATION_CONFIG } from '../services/inference/config';
 
-export function useInkModel(theme: 'light' | 'dark', provider: 'webgpu' | 'wasm', customModelId: string = MODEL_CONFIG.ID) {
+export function useInkModel(theme: 'light' | 'dark', provider: 'webgpu' | 'wasm' | null, customModelId: string = MODEL_CONFIG.ID) {
   // Sampling Defaults
   const [numCandidates, setNumCandidates] = useState<number>(GENERATION_CONFIG.NUM_BEAMS);
   const [doSample, setDoSample] = useState(true); // Default to true for better UX with multiple candidates? Or stick to config? Sticking to hardcoded true for now as per original code logic or Config?
@@ -70,6 +70,7 @@ export function useInkModel(theme: 'light' | 'dark', provider: 'webgpu' | 'wasm'
         const { getSessionOptions } = await import('../services/inference/config');
 
         // Determine which files we expect based on current settings
+        if (!provider) return;
         const sessionOptions = getSessionOptions(provider);
         const expectedFiles = [
           sessionOptions.encoder_model_file_name,
@@ -112,6 +113,8 @@ export function useInkModel(theme: 'light' | 'dark', provider: 'webgpu' | 'wasm'
     let isCancelled = false;
 
     const initModel = async () => {
+      if (!provider) return;
+
       try {
         // Register quota error handler (e.g. Incognito fallback)
         const { downloadManager } = await import('../services/downloader/DownloadManager');

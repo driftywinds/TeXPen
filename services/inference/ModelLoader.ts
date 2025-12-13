@@ -109,23 +109,9 @@ export class ModelLoader {
         loadError?.message?.includes('adapter');
 
       if ((isWebGPUMemoryError || isUnsupportedDeviceError || isSessionError) && device === MODEL_CONFIG.PROVIDERS.WEBGPU) {
-        if (isWebGPUMemoryError) {
-          console.warn('[ModelLoader] WebGPU buffer allocation failed, falling back to WASM...');
-          if (onProgress) onProgress('WebGPU memory limit hit. Switching to WASM...');
-        } else {
-          console.warn('[ModelLoader] WebGPU not supported in this environment, falling back to WASM...');
-          if (onProgress) onProgress('WebGPU unavailable. Switching to WASM...');
-        }
-
-        // Retry with WASM
-        device = MODEL_CONFIG.PROVIDERS.WASM;
-        sessionOptions = getSessionOptions(device);
-
-        // Explicitly download the WASM model files so the user sees progress
-        await this.preDownloadModels(modelId, sessionOptions, onProgress);
-
-        const model = await AutoModelForVision2Seq.from_pretrained(modelId, sessionOptions as unknown as Record<string, unknown>) as unknown as VisionEncoderDecoderModel;
-        return { model, device };
+        console.error('[ModelLoader] WebGPU error encountered:', loadError);
+        // User requested forced WebGPU: Do not fall back.
+        throw loadError;
       } else {
         throw loadError;
       }

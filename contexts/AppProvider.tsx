@@ -9,12 +9,13 @@ import { HistoryItem } from '../types';
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { theme } = useThemeContext();
-    const [provider, setProvider] = useState<Provider>(MODEL_CONFIG.DEFAULT_PROVIDER as Provider);
+    const [provider, setProvider] = useState<Provider | null>(null);
     const [customModelId, setCustomModelId] = useState<string>(MODEL_CONFIG.ID);
     const [activeTab, setActiveTab] = useState<'draw' | 'upload'>('draw');
 
     useEffect(() => {
         isWebGPUAvailable().then(available => {
+            console.log('[AppProvider] WebGPU Available:', available);
             if (available) {
                 setProvider('webgpu');
             } else {
@@ -217,7 +218,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setTopK,
         topP,
         setTopP,
-        provider,
+        provider: provider || 'wasm',
         setProvider,
         progress,
         userConfirmed,
