@@ -140,7 +140,7 @@ export class InferenceService {
         onProgress
       );
 
-      if (onProgress) onProgress('Initializing model (compiling shaders)...');
+      if (onProgress) onProgress('Initializing model (compiling shaders)...', 0);
 
       // Load Tokenizer and Model in parallel
       // ModelLoader will handle fallback to WASM if WebGPU fails

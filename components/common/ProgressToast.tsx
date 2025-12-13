@@ -34,9 +34,9 @@ export const ProgressToast: React.FC<ProgressToastProps> = ({ phase, progress, i
                             {part.trim()}
                         </span>
                     ))}
-                    {progress > 0 && (
+                    {progress > 0 && progress < 100 && (
                         <span className="whitespace-nowrap text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                            Total: {Math.round(progress)}%
+                            Progress: {Math.round(progress)}%
                         </span>
                     )}
                 </div>
