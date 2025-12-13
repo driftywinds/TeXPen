@@ -204,7 +204,24 @@ export class DownloadManager {
     return { ok: true };
   }
 
+  public async cancelDownload(url: string): Promise<void> {
+    const downloader = this.activeDownloads.get(url);
+    if (downloader) {
+      downloader.abort();
+      // The promise will reject and be caught in processQueue, cleaning up state
+    } else {
+      // Remove from queue if present
+      const index = this.queue.findIndex(item => item.url === url);
+      if (index !== -1) {
+        const item = this.queue[index];
+        this.queue.splice(index, 1);
+        item.reject(new Error('Download cancelled'));
+      }
+    }
+  }
+
   public async deleteFromCache(url: string): Promise<void> {
+    await this.cancelDownload(url); // Ensure no active download is writing to this file
     // @ts-expect-error - env.cacheName exists
     const cacheName = env.cacheName || 'transformers-cache';
     const cache = await caches.open(cacheName);

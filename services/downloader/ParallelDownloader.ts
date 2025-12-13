@@ -16,6 +16,7 @@ export class ParallelDownloader {
   private concurrency = 4;
   private abortController: AbortController;
   private onProgress?: ProgressCallback;
+  private rejecter?: (reason?: any) => void;
 
   constructor(url: string, store: ChunkStore, options?: { chunkSize?: number, concurrency?: number, onProgress?: ProgressCallback }) {
     this.url = url;
@@ -71,6 +72,7 @@ export class ParallelDownloader {
     let queueIndex = 0;
 
     return new Promise((resolve, reject) => {
+      this.rejecter = reject;
       const processNext = async () => {
         if (this.abortController.signal.aborted) return;
 
@@ -134,5 +136,8 @@ export class ParallelDownloader {
 
   public abort() {
     this.abortController.abort();
+    if (this.rejecter) {
+      this.rejecter(new Error('Download aborted'));
+    }
   }
 }
