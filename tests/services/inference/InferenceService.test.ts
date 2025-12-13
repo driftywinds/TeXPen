@@ -2,7 +2,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi, beforeAll } from 'vitest';
 import { InferenceService } from '../../../services/inference/InferenceService';
 import { InferenceOptions } from '../../../services/inference/types';
-import { MODEL_CONFIG } from '../../../services/inference/config';
 
 // Mock DownloadManager to prevent 300MB downloads while keeping Service logic "legit"
 vi.mock('../../../services/downloader/DownloadManager', () => {
