@@ -383,11 +383,15 @@ const CanvasBoard: React.FC<CanvasBoardProps> = ({ onStrokeEnd, onStrokeAdded, r
             selectedStrokeIndices.forEach(index => {
                 const stroke = strokesRef.current[index];
                 if (stroke) {
-                    stroke.points = stroke.points.map(p => ({
-                        x: p.x + dx,
-                        y: p.y + dy,
-                        pressure: p.pressure
-                    }));
+                    // Create new stroke object to avoid mutating history
+                    strokesRef.current[index] = {
+                        ...stroke,
+                        points: stroke.points.map(p => ({
+                            x: p.x + dx,
+                            y: p.y + dy,
+                            pressure: p.pressure
+                        }))
+                    };
                 }
             });
             redrawStrokes();
