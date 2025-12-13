@@ -5,13 +5,16 @@ import { env } from '@huggingface/transformers';
 import { DownloadProgress } from './types';
 import { createSHA256 } from 'hash-wasm';
 
+// @ts-expect-error - env.cacheName exists in runtime
+const CACHE_NAME = env.cacheName || 'transformers-cache';
+
 export class DownloadManager {
   private static instance: DownloadManager;
   private store: ChunkStore;
   private activeDownloads: Map<string, ParallelDownloader> = new Map();
   private queue: Array<{ url: string, onProgress?: (p: DownloadProgress) => void, resolve: () => void, reject: (err: unknown) => void }> = [];
   private activeCount = 0;
-  private MAX_CONCURRENT_FILES = 2; // Mobile friendly limit
+  private readonly MAX_CONCURRENT_FILES = 2; // Mobile friendly limit
 
   private constructor() {
     this.store = new ChunkStore();
@@ -24,16 +27,21 @@ export class DownloadManager {
     return DownloadManager.instance;
   }
 
+  private getCache(): Promise<Cache> {
+    return caches.open(CACHE_NAME);
+  }
+
+  private extractFilename(url: string): string {
+    return url.split('/').pop() || 'unknown';
+  }
+
   public setQuotaErrorHandler(handler: () => Promise<boolean>) {
     // TODO: Implement quota handling in V3
     console.warn('Quota handling not yet implemented in V3', handler);
   }
 
   public async downloadFile(url: string, onProgress?: (progress: DownloadProgress) => void): Promise<void> {
-    // 1. Check Cache API first (Legacy compatibility)
-    // @ts-expect-error - env.cacheName exists in runtime
-    const cacheName = env.cacheName || 'transformers-cache';
-    const cache = await caches.open(cacheName);
+    const cache = await this.getCache();
     const cachedResponse = await cache.match(url);
 
     if (cachedResponse) {
@@ -43,31 +51,19 @@ export class DownloadManager {
         onProgress?.({
           loaded: expectedSize,
           total: expectedSize,
-          file: url.split('/').pop() || 'unknown'
+          file: this.extractFilename(url)
         });
         return;
       }
     }
 
-    // 2. Queue or Start Download
     await this.scheduleDownload(url, onProgress);
-
-    // 3. Finalize Cache (Move from IDB to Cache API)
     await this.finalizeCache(url, cache);
   }
 
   private async scheduleDownload(url: string, onProgress?: (p: DownloadProgress) => void): Promise<void> {
-    // Deduplication
     if (this.activeDownloads.has(url)) {
-      // Existing download, we can't easily hook into the promise of the *current* download 
-      // without complex logic. For now, we await it.
-      // Ideally we should attach a secondary listener, but ParallelDownloader is simple.
-      // Let's just wait for it to finish.
-      // NOTE: This doesn't share progress updates with the second caller. 
-      // If that's needed, we need an EventEmitter in DownloadManager.
-      // Given usage in ModelLoader, usually sequential or handled by UI state.
-
-      // We can poll or wait for the active one to be removed from map.
+      // Wait for existing download to complete
       while (this.activeDownloads.has(url)) {
         await new Promise(r => setTimeout(r, 100));
       }
@@ -80,7 +76,7 @@ export class DownloadManager {
     });
   }
 
-  private async processQueue() {
+  private async processQueue(): Promise<void> {
     if (this.activeCount >= this.MAX_CONCURRENT_FILES) return;
 
     const item = this.queue.shift();
@@ -94,7 +90,7 @@ export class DownloadManager {
         onProgress?.({
           loaded: p.loaded,
           total: p.total,
-          file: url.split('/').pop() || 'unknown'
+          file: this.extractFilename(url)
         });
       }
     });
@@ -103,25 +99,21 @@ export class DownloadManager {
 
     try {
       await downloader.start();
-      this.activeDownloads.delete(url);
-      this.activeCount--;
       resolve();
-      this.processQueue();
     } catch (err) {
+      reject(err);
+    } finally {
       this.activeDownloads.delete(url);
       this.activeCount--;
-      reject(err);
       this.processQueue();
     }
   }
 
-  private async finalizeCache(url: string, cache: Cache) {
+  private async finalizeCache(url: string, cache: Cache): Promise<void> {
     const meta = await this.store.getMetadata(url);
     if (!meta) throw new Error(`Download failed: Metadata missing for ${url}`);
 
-    // Create a stream from chunks
     const stream = await this.store.getStream(url);
-
     const response = new Response(stream, {
       headers: {
         'Content-Length': meta.totalBytes.toString(),
@@ -130,27 +122,30 @@ export class DownloadManager {
     });
 
     await cache.put(url, response);
-
-    // Cleanup IDB after successful cache put?
-    // User asked for "Saved checkpoints to allow resuming".
-    // If we delete it, we lose the checkpoint if the Cache API decides to evict.
-    // However, keeping it doubles storage usage (Cache API + IDB).
-    // Standard Transformers.js behavior relies on Cache API.
-    // If we want RESUMING, we must keep IDB until we are sure we are done.
-    // Once in Cache API, it is "done".
-    // If Cache API deletes it, we would have to re-download. 
-    // If we keep it in IDB, we can restore.
-
-    // DECISION: Delete from IDB to save space. Checkpointing is for *interrupted* downloads.
-    // Once finished, it's effectively "installed".
-
     await this.store.deleteFile(url);
   }
 
+  private async computeSha256(blob: Blob): Promise<string> {
+    const hasher = await createSHA256();
+    hasher.init();
+
+    if (blob.stream) {
+      const reader = blob.stream().getReader();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value) hasher.update(value);
+      }
+    } else {
+      const buffer = await blob.arrayBuffer();
+      hasher.update(new Uint8Array(buffer));
+    }
+
+    return hasher.digest();
+  }
+
   public async checkCacheIntegrity(url: string, expectedChecksum?: string): Promise<{ ok: boolean, reason?: string, missing?: boolean }> {
-    // @ts-expect-error - env.cacheName exists
-    const cacheName = env.cacheName || 'transformers-cache';
-    const cache = await caches.open(cacheName);
+    const cache = await this.getCache();
     const cachedResponse = await cache.match(url);
 
     if (!cachedResponse) {
@@ -158,46 +153,26 @@ export class DownloadManager {
     }
 
     const contentLength = cachedResponse.headers.get('Content-Length');
-    if (contentLength) {
-      const expectedSize = parseInt(contentLength, 10);
-      const blob = await cachedResponse.clone().blob();
-      if (blob.size !== expectedSize) {
-        return { ok: false, reason: `Size mismatch: expected ${expectedSize}, got ${blob.size}` };
-      }
+    if (!contentLength) {
+      return { ok: true };
+    }
 
-      if (expectedChecksum) {
-        try {
-          const hasher = await createSHA256();
-          hasher.init();
+    const expectedSize = parseInt(contentLength, 10);
+    const blob = await cachedResponse.clone().blob();
 
-          // Use streaming to avoid loading entire file into memory
-          if (blob.stream) {
-            const reader = blob.stream().getReader();
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              if (value) {
-                hasher.update(value);
-              }
-            }
-          } else {
-            // Fallback for environments without blob.stream() (unlikely in modern browsers/Bun)
-            // Process in chunks manually if needed, but blob.stream() is standard
-            const buffer = await blob.arrayBuffer();
-            hasher.update(new Uint8Array(buffer));
-          }
+    if (blob.size !== expectedSize) {
+      return { ok: false, reason: `Size mismatch: expected ${expectedSize}, got ${blob.size}` };
+    }
 
-          const hashHex = hasher.digest();
-
-          if (hashHex !== expectedChecksum) {
-            return { ok: false, reason: `Checksum mismatch: expected ${expectedChecksum}, got ${hashHex}` };
-          }
-        } catch (error) {
-          console.error('Checksum verification failed:', error);
-          // Fallback to manual load if stream fails? Or just fail.
-          // Let's fail for now to detect issues.
-          return { ok: false, reason: `Checksum calculation failed: ${error}` };
+    if (expectedChecksum) {
+      try {
+        const hashHex = await this.computeSha256(blob);
+        if (hashHex !== expectedChecksum) {
+          return { ok: false, reason: `Checksum mismatch: expected ${expectedChecksum}, got ${hashHex}` };
         }
+      } catch (error) {
+        console.error('Checksum verification failed:', error);
+        return { ok: false, reason: `Checksum calculation failed: ${error}` };
       }
     }
 
@@ -208,23 +183,20 @@ export class DownloadManager {
     const downloader = this.activeDownloads.get(url);
     if (downloader) {
       downloader.abort();
-      // The promise will reject and be caught in processQueue, cleaning up state
-    } else {
-      // Remove from queue if present
-      const index = this.queue.findIndex(item => item.url === url);
-      if (index !== -1) {
-        const item = this.queue[index];
-        this.queue.splice(index, 1);
-        item.reject(new Error('Download cancelled'));
-      }
+      return;
+    }
+
+    const index = this.queue.findIndex(item => item.url === url);
+    if (index !== -1) {
+      const item = this.queue[index];
+      this.queue.splice(index, 1);
+      item.reject(new Error('Download cancelled'));
     }
   }
 
   public async deleteFromCache(url: string): Promise<void> {
-    await this.cancelDownload(url); // Ensure no active download is writing to this file
-    // @ts-expect-error - env.cacheName exists
-    const cacheName = env.cacheName || 'transformers-cache';
-    const cache = await caches.open(cacheName);
+    await this.cancelDownload(url);
+    const cache = await this.getCache();
     await cache.delete(url);
     await this.store.deleteFile(url);
   }
