@@ -24,9 +24,9 @@ export class DownloadManager {
     return DownloadManager.instance;
   }
 
-  public setQuotaErrorHandler() {
+  public setQuotaErrorHandler(handler: () => Promise<boolean>) {
     // TODO: Implement quota handling in V3
-    console.warn('Quota handling not yet implemented in V3');
+    console.warn('Quota handling not yet implemented in V3', handler);
   }
 
   public async downloadFile(url: string, onProgress?: (progress: DownloadProgress) => void): Promise<void> {

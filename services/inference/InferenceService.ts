@@ -154,7 +154,6 @@ export class InferenceService {
         modelLoader.loadModelWithFallback(
           this.currentModelId,
           device,
-          dtype,
           onProgress
         ),
       ]);
