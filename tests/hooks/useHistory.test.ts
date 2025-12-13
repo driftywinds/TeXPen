@@ -202,4 +202,49 @@ describe('useHistory', () => {
 
     expect(setItemSpy).toHaveBeenCalledWith('texpen_history', expect.stringContaining('test'));
   });
+
+  it('preserves strokes in version history', () => {
+    const { result } = renderHook(() => useHistory());
+    const stroke1 = [{ x: 0, y: 0 }, { x: 10, y: 10 }];
+    const stroke2 = [{ x: 0, y: 0 }, { x: 10, y: 10 }, { x: 20, y: 20 }];
+
+    const item1: HistoryItem = {
+      id: '1',
+      latex: 'A',
+      timestamp: 100,
+      sessionId: 'session1',
+      source: 'draw',
+      strokes: [{ points: stroke1, color: '#000', width: 3, tool: 'pen' as const }]
+    };
+
+    act(() => {
+      result.current.addToHistory(item1);
+    });
+
+    const item2: HistoryItem = {
+      id: '2',
+      latex: 'AB',
+      timestamp: 200,
+      sessionId: 'session1',
+      source: 'draw',
+      strokes: [{ points: stroke2, color: '#000', width: 3, tool: 'pen' as const }]
+    };
+
+    act(() => {
+      result.current.addToHistory(item2);
+    });
+
+    // There should be 1 history item with 2 versions
+    expect(result.current.history).toHaveLength(1);
+    expect(result.current.history[0].versions).toHaveLength(2);
+
+    // Version 1 should have the original strokes
+    expect(result.current.history[0].versions?.[0].strokes).toBeDefined();
+    expect(result.current.history[0].versions?.[0].strokes?.[0].points).toEqual(stroke1);
+
+    // Version 2 should have the updated strokes
+    expect(result.current.history[0].versions?.[1].strokes).toBeDefined();
+    expect(result.current.history[0].versions?.[1].strokes?.[0].points).toEqual(stroke2);
+  });
 });
+
