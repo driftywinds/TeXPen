@@ -18,7 +18,7 @@ describe('InferenceService Memory Leak / Race Condition (InferenceEngine)', () =
     // 1. Mock the ModelLoader to be slow, so we can control the timing
     const { modelLoader } = await import('../../../services/inference/ModelLoader');
 
-    let resolveLoad: (value: any) => void;
+    let resolveLoad: (value: unknown) => void;
     const loadPromise = new Promise((resolve) => {
       resolveLoad = resolve;
     });
@@ -29,7 +29,8 @@ describe('InferenceService Memory Leak / Race Condition (InferenceEngine)', () =
         model: {
           dispose: vi.fn(),
           generate: vi.fn(),
-        } as any,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any, // keeping as any for mock convenience if complex
         device: 'cpu'
       };
     });
@@ -37,6 +38,7 @@ describe('InferenceService Memory Leak / Race Condition (InferenceEngine)', () =
     vi.spyOn(modelLoader, 'preDownloadModels').mockResolvedValue(undefined);
 
     // 2. Call init (this will get queued and start waiting on our slow load)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const initPromise = engine.init(undefined, { device: 'cpu' as any });
 
     // 3. IMMEDIATELY call dispose.
@@ -51,9 +53,9 @@ describe('InferenceService Memory Leak / Race Condition (InferenceEngine)', () =
 
     // 6. Assertions
     // The model should NOT be set on the engine
-    // @ts-ignore - accessing private field
+    // @ts-expect-error - accessing private field
     expect(engine.model).toBeNull();
-    // @ts-ignore - accessing private field
+    // @ts-expect-error - accessing private field
     expect(engine.tokenizer).toBeNull();
   });
 });

@@ -335,7 +335,7 @@ export class InferenceEngine {
     return processed;
   }
 
-  public async dispose(force: boolean = false): Promise<void> {
+  public async dispose(_force: boolean = false): Promise<void> {
     // Increment generation to invalidate any pending inits
     this.disposalGeneration++;
 

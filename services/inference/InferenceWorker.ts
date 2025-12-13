@@ -15,7 +15,7 @@ self.onmessage = async (e: MessageEvent) => {
         self.postMessage({ type: "success", id, data: null });
         break;
 
-      case "infer":
+      case "infer": {
         // data is { blob, options }
         // We need to make sure blob is valid. Worker receives Blob.
         const { blob, options } = data as { blob: Blob; options: SamplingOptions };
@@ -25,6 +25,7 @@ self.onmessage = async (e: MessageEvent) => {
         const result = await engine.infer(blob, options);
         self.postMessage({ type: "success", id, data: result });
         break;
+      }
 
       case "dispose":
         await engine.dispose(data?.force);

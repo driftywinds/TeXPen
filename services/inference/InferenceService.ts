@@ -16,8 +16,8 @@ export class InferenceService {
 
   // Map requestId -> {resolve, reject, onProgress}
   private pendingRequests = new Map<string, {
-    resolve: (data: any) => void;
-    reject: (err: any) => void;
+    resolve: (data: unknown) => void;
+    reject: (err: unknown) => void;
     onProgress?: (status: string, progress?: number) => void;
   }>();
 
@@ -122,12 +122,12 @@ export class InferenceService {
       signal.addEventListener('abort', onAbort);
 
       this.pendingRequests.set(id, {
-        resolve: (data: any) => {
+        resolve: (data: unknown) => {
           signal.removeEventListener('abort', onAbort);
-          req.resolve(data);
+          req.resolve(data as InferenceResult);
           resolve();
         },
-        reject: (err: any) => {
+        reject: (err: unknown) => {
           signal.removeEventListener('abort', onAbort);
           req.reject(err);
           // resolve() or reject()? queue expects promise loop to continue? 

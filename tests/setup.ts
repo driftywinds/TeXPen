@@ -90,7 +90,7 @@ if (typeof Worker === 'undefined') {
       this.url = stringUrl.toString();
     }
 
-    postMessage(data: any) {
+    postMessage(_data: any) {
       // Default: do nothing, or maybe trigger onmessage in a real integration test
     }
 
