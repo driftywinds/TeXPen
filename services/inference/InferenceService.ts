@@ -24,7 +24,7 @@ export class InferenceService {
   private model: VisionEncoderDecoderModel | null = null;
   private tokenizer: PreTrainedTokenizer | null = null;
   private static instance: InferenceService;
-  private dtype: string = MODEL_CONFIG.DEFAULT_QUANTIZATION;
+
   private currentModelId: string = MODEL_CONFIG.ID;
   private initPromise: Promise<void> | null = null;
 
@@ -85,10 +85,8 @@ export class InferenceService {
     options: InferenceOptions
   ): Promise<void> {
     if (this.model && this.tokenizer) {
-      // If the model is already loaded, but the quantization or device is different, we need to dispose and reload.
+      // If the model is already loaded, but the device is different, we need to dispose and reload.
       if (
-        (options.dtype &&
-          this.model.config.dtype !== options.dtype) ||
         (options.device &&
           this.model.config.device !== options.device) ||
         (options.modelId && this.currentModelId !== options.modelId)
@@ -117,14 +115,10 @@ export class InferenceService {
 
       await this.handleSessionWait(onProgress);
 
+      // Determine initial device preference
       const webgpuAvailable = await isWebGPUAvailable();
-      const device =
+      const preferredDevice =
         options.device || (webgpuAvailable ? MODEL_CONFIG.PROVIDERS.WEBGPU : MODEL_CONFIG.PROVIDERS.WASM);
-      const dtype =
-        options.dtype ||
-        (webgpuAvailable
-          ? MODEL_CONFIG.DEFAULT_QUANTIZATION
-          : MODEL_CONFIG.QUANTIZATION.Q8);
 
       // Update current ID if provided, otherwise keep existing (or default on first run)
       if (options.modelId) {
@@ -133,10 +127,10 @@ export class InferenceService {
 
       if (onProgress)
         onProgress(
-          `Loading model ${this.currentModelId} (${device}, ${dtype})...`
+          `Loading model ${this.currentModelId} (${preferredDevice})...`
         );
 
-      const sessionOptions = getSessionOptions(device, dtype);
+      const sessionOptions = getSessionOptions(preferredDevice);
 
       // Pre-download heavy model files using ModelLoader
       const { modelLoader } = await import("./ModelLoader");
@@ -149,16 +143,17 @@ export class InferenceService {
       if (onProgress) onProgress('Initializing model (compiling shaders)...');
 
       // Load Tokenizer and Model in parallel
+      // ModelLoader will handle fallback to WASM if WebGPU fails
       const [tokenizer, modelResult] = await Promise.all([
         AutoTokenizer.from_pretrained(this.currentModelId),
         modelLoader.loadModelWithFallback(
           this.currentModelId,
-          device,
+          preferredDevice,
           onProgress
         ),
       ]);
 
-      const { model, dtype: finalDtype } = modelResult;
+      const { model } = modelResult;
 
       // CHECK GENERATION AGAIN
       if (this.disposalGeneration !== localGeneration) {
@@ -170,7 +165,6 @@ export class InferenceService {
 
       this.tokenizer = tokenizer;
       this.model = model;
-      this.dtype = finalDtype;
 
       // Clear loading flag - we're done
       try {
@@ -268,13 +262,8 @@ export class InferenceService {
 
       if (signal.aborted) throw new Error("Aborted");
 
-      // 2) Generation config (max tokens, repetition penalty, etc.)
-      const generationConfig = getGenerationConfig(
-        this.dtype,
-        this.tokenizer!
-      );
-      const repetitionPenalty =
-        generationConfig.repetition_penalty || 1.0;
+      // 2) Generation config (max tokens, etc.)
+      const generationConfig = getGenerationConfig(this.tokenizer!);
 
       // 3) Generate candidates using hybrid strategy
       const startGeneration = performance.now();
@@ -282,7 +271,6 @@ export class InferenceService {
       const candidates = await this.generateCandidates(
         pixelValues,
         generationConfig,
-        repetitionPenalty,
         req.options,
         signal
       );
@@ -333,7 +321,6 @@ export class InferenceService {
   private async generateCandidates(
     pixelValues: Tensor,
     generationConfig: ReturnType<typeof getGenerationConfig>,
-    repetitionPenalty: number,
     options: SamplingOptions,
     signal: AbortSignal
   ): Promise<string[]> {
@@ -362,7 +349,6 @@ export class InferenceService {
       const generateOptions: Record<string, unknown> = {
         inputs: pixelValues,
         max_new_tokens: generationConfig.max_new_tokens,
-        repetition_penalty: repetitionPenalty,
         decoder_start_token_id: generationConfig.decoder_start_token_id,
       };
 
@@ -414,7 +400,6 @@ export class InferenceService {
         effectiveNumBeams,
         signal,
         generationConfig.max_new_tokens,
-        repetitionPenalty,
         generationConfig.decoder_start_token_id
       );
     }

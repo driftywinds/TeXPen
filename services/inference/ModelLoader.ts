@@ -86,13 +86,13 @@ export class ModelLoader {
     modelId: string,
     initialDevice: string,
     onProgress?: (status: string, progress?: number) => void
-  ): Promise<{ model: VisionEncoderDecoderModel, device: string, dtype: string }> {
+  ): Promise<{ model: VisionEncoderDecoderModel, device: string }> {
     let device = initialDevice;
     let sessionOptions = getSessionOptions(device);
 
     try {
       const model = await AutoModelForVision2Seq.from_pretrained(modelId, sessionOptions as unknown as Record<string, unknown>) as unknown as VisionEncoderDecoderModel;
-      return { model, device, dtype: 'fp32' };
+      return { model, device };
     } catch (err: unknown) {
       const loadError = err as Error;
       // Check if this is a WebGPU buffer size / memory error OR generic unsupported device error (common in Node env)
@@ -117,16 +117,15 @@ export class ModelLoader {
           if (onProgress) onProgress('WebGPU unavailable. Switching to WASM...');
         }
 
-        // Retry with WASM (still fp32 as we removed quantized models)
+        // Retry with WASM
         device = MODEL_CONFIG.PROVIDERS.WASM;
-        // dtype remains the same (fp32)
         sessionOptions = getSessionOptions(device);
 
         // Explicitly download the WASM model files so the user sees progress
         await this.preDownloadModels(modelId, sessionOptions, onProgress);
 
         const model = await AutoModelForVision2Seq.from_pretrained(modelId, sessionOptions as unknown as Record<string, unknown>) as unknown as VisionEncoderDecoderModel;
-        return { model, device, dtype: 'fp32' };
+        return { model, device };
       } else {
         throw loadError;
       }

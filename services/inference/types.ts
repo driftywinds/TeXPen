@@ -33,7 +33,6 @@ export interface SamplingOptions {
 }
 
 export interface InferenceOptions {
-  dtype?: string;
   device?: 'webgpu' | 'wasm';
   modelId?: string;
 }

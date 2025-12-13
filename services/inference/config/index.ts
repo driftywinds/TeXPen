@@ -6,22 +6,19 @@ export { MODEL_CONFIG, GENERATION_CONFIG };
 
 export interface SessionConfig {
   device: string;
-  dtype: string;
   encoder_model_file_name: string;
   decoder_model_file_name: string;
 }
 
-export function getSessionOptions(device: string, _dtype?: string): SessionConfig {
-  // We only support fp32 now
+export function getSessionOptions(device: string): SessionConfig {
   return {
     device,
-    dtype: 'fp32',
     encoder_model_file_name: 'encoder_model.onnx',
     decoder_model_file_name: 'decoder_with_past_model.onnx',
   };
 }
 
-export function getGenerationConfig(dtype: string, tokenizer: { pad_token_id: number; eos_token_id: number; bos_token_id: number; }) {
+export function getGenerationConfig(tokenizer: { pad_token_id: number; eos_token_id: number; bos_token_id: number; }) {
   return {
     max_new_tokens: GENERATION_CONFIG.MAX_NEW_TOKENS,
     do_sample: GENERATION_CONFIG.DO_SAMPLE,
@@ -30,7 +27,5 @@ export function getGenerationConfig(dtype: string, tokenizer: { pad_token_id: nu
     eos_token_id: tokenizer.eos_token_id,
     bos_token_id: tokenizer.bos_token_id,
     decoder_start_token_id: 0,
-    // Only apply repetition penalty for fp16 to prevent loops
-    ...(dtype === 'fp16' ? { repetition_penalty: GENERATION_CONFIG.FP16_REPETITION_PENALTY } : {}),
   };
 }

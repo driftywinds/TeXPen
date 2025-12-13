@@ -1,7 +1,6 @@
 export const MODEL_CONFIG = {
   ID: 'Ji-Ha/TexTeller3-ONNX-dynamic',
   DEFAULT_PROVIDER: 'webgpu',
-  DEFAULT_QUANTIZATION: 'fp32',
 
   // Model Specs
   IMAGE_SIZE: 448,
@@ -24,11 +23,6 @@ export const MODEL_CONFIG = {
   PROVIDERS: {
     WEBGPU: 'webgpu',
     WASM: 'wasm',
-  },
-  QUANTIZATION: {
-    FP32: 'fp32',
-    FP16: 'fp16',
-    Q8: 'q8',
   },
   CHECKSUMS: {
     'encoder_model.onnx': '5e19cbcea4a6e28c3c4a6e52aca380e2f6e59a463a8c0df8330927b97fdc5499',
