@@ -1,7 +1,6 @@
 import React from 'react';
 import { useAppContext } from '../../contexts/AppContext';
 import { useThemeContext } from '../../contexts/ThemeContext';
-import { useHistoryContext } from '../../contexts/HistoryContext';
 import { Stroke } from '../../types/canvas';
 import CanvasArea from '../canvas/CanvasArea';
 import OutputDisplay from '../display/OutputDisplay';
@@ -21,7 +20,6 @@ const DrawTab: React.FC<DrawTabProps> = ({
         latex,
         clearModel,
         userConfirmed,
-        isInferencing,
         activeInferenceTab,
         loadedStrokes,
         refreshSession,
@@ -29,7 +27,7 @@ const DrawTab: React.FC<DrawTabProps> = ({
     } = useAppContext();
 
     const { theme } = useThemeContext();
-    const { } = useHistoryContext();
+
 
     const isDrawInferencing = activeInferenceTab === 'draw';
 
