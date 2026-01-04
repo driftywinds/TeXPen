@@ -16,10 +16,10 @@ export const SettingsMenu: React.FC = () => {
     const menuRef = useRef<HTMLDivElement>(null);
     const modelIdInputRef = useRef<HTMLInputElement>(null);
     const {
-        encoderQuantization,
-        setEncoderQuantization,
-        decoderQuantization,
-        setDecoderQuantization,
+        // encoderQuantization, // Removed
+        // setEncoderQuantization, // Removed
+        // decoderQuantization, // Removed
+        // setDecoderQuantization, // Removed
         provider,
         setProvider,
         showPreviewInput,
@@ -126,27 +126,10 @@ export const SettingsMenu: React.FC = () => {
                     <div className="h-px bg-black/5 dark:bg-white/5 mx-2" />
 
                     {/* Encoder Quantization */}
+                    {/* Model Performance Settings */}
                     <div className="p-3">
-                        <div className="flex items-center gap-1.5 mb-2">
-                            <div className="text-xs font-bold uppercase text-slate-400 dark:text-white/40">Encoder Quantization</div>
-                            <Tooltip content="Quantization for the Vision Transformer Encoder. Lower precision (int8/int4) is usually fine for the encoder and saves memory.">
-                                <HelpIcon />
-                            </Tooltip>
-                        </div>
-                        <QuantizationSelector value={encoderQuantization} onChange={setEncoderQuantization} />
-                    </div>
-
-                    <div className="h-px bg-black/5 dark:bg-white/5 mx-2" />
-
-                    {/* Decoder Quantization */}
-                    <div className="p-3">
-                        <div className="flex items-center gap-1.5 mb-2">
-                            <div className="text-xs font-bold uppercase text-slate-400 dark:text-white/40">Decoder Quantization</div>
-                            <Tooltip content="Quantization for the Text Decoder. The decoder is sensitive to precision; using 'fp16' or 'fp32' is recommended for best accuracy, while 'int8' saves significantly more memory.">
-                                <HelpIcon />
-                            </Tooltip>
-                        </div>
-                        <QuantizationSelector value={decoderQuantization} onChange={setDecoderQuantization} />
+                        {/* <div className="text-xs font-bold uppercase text-slate-400 dark:text-white/40 mb-2">Performance</div> */}
+                        <QuantizationSelector />
                     </div>
 
                     <div className="h-px bg-black/5 dark:bg-white/5 mx-2" />

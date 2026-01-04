@@ -1,7 +1,7 @@
 // Imports cleaned up
 import { createContext, useContext } from 'react';
 import { ModelConfig, Candidate, HistoryItem } from '../types';
-import { Quantization } from '../services/inference/types';
+import { Quantization, PerformanceProfile } from '../services/inference/types';
 import { Stroke } from '../types/canvas';
 
 export type Provider = 'webgpu' | 'wasm';
@@ -40,6 +40,8 @@ export interface AppContextType {
     setEncoderQuantization: (q: Quantization) => void;
     decoderQuantization: Quantization;
     setDecoderQuantization: (q: Quantization) => void;
+    performanceProfile: PerformanceProfile;
+    setPerformanceProfile: (p: PerformanceProfile) => void;
     progress: number;
     userConfirmed: boolean;
     setUserConfirmed: (confirmed: boolean) => void;

@@ -28,6 +28,7 @@ TexTeller/
 _local/
 PaddleOCR/
 _temp*/
+_TODO.md
 
 # Models
 *.onnx

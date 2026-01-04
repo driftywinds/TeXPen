@@ -19,7 +19,7 @@ const QUANT_MODEL_MAP: Record<Quantization, { encoder: string; decoder: string }
   },
   fp16: {
     encoder: 'encoder_model_fp16.onnx',
-    decoder: 'decoder_model_merged_fp16.onnx',
+    decoder: 'decoder_model_merged.onnx', // FP16 decoder removed, use FP32
   },
   int8: {
     encoder: 'encoder_model_int8.onnx',
