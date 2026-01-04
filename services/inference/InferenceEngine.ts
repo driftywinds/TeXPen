@@ -17,7 +17,9 @@ import {
   VisionEncoderDecoderModel,
   SamplingOptions,
   Quantization,
+  InferenceOptions,
 } from "./types";
+import { QuantizationConfig } from "./config";
 
 export class InferenceEngine {
   private model: VisionEncoderDecoderModel | null = null;
@@ -25,6 +27,8 @@ export class InferenceEngine {
 
   private currentModelId: string = MODEL_CONFIG.ID;
   private currentQuantization: Quantization = 'int8';
+  private currentEncoderQuantization?: Quantization;
+  private currentDecoderQuantization?: Quantization;
   private initPromise: Promise<void> | null = null;
   private isLoading: boolean = false;
 
@@ -88,7 +92,9 @@ export class InferenceEngine {
         (options.device &&
           this.model.config.device !== options.device) ||
         (options.modelId && this.currentModelId !== options.modelId) ||
-        (options.quantization && this.currentQuantization !== options.quantization)
+        (options.quantization && this.currentQuantization !== options.quantization) ||
+        (options.encoderQuantization && this.currentEncoderQuantization !== options.encoderQuantization) ||
+        (options.decoderQuantization && this.currentDecoderQuantization !== options.decoderQuantization)
       ) {
         // Internal reconfiguration: Dispose OLD model but do NOT increment generation.
 
@@ -134,15 +140,27 @@ export class InferenceEngine {
       if (options.quantization) {
         this.currentQuantization = options.quantization;
       }
+      if (options.encoderQuantization) {
+        this.currentEncoderQuantization = options.encoderQuantization;
+      }
+      if (options.decoderQuantization) {
+        this.currentDecoderQuantization = options.decoderQuantization;
+      }
 
       if (onProgress)
         onProgress(
           `Loading model ${this.currentModelId} (${preferredDevice})...`
         );
 
-      console.log(`[InferenceEngine] Initializing with device: ${preferredDevice} (Available: ${webgpuAvailable}, Requested: ${options.device}), Quantization: ${this.currentQuantization}`);
+      const quantConfig: QuantizationConfig = {
+        overall: this.currentQuantization,
+        encoder: this.currentEncoderQuantization,
+        decoder: this.currentDecoderQuantization,
+      };
 
-      const sessionOptions = getSessionOptions(preferredDevice, this.currentQuantization);
+      console.log(`[InferenceEngine] Initializing with device: ${preferredDevice}, Quantization: ${JSON.stringify(quantConfig)}`);
+
+      const sessionOptions = getSessionOptions(preferredDevice, quantConfig);
 
       // Pre-download heavy model files using ModelLoader
       const { modelLoader } = await import("./ModelLoader");

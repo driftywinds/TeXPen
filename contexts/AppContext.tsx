@@ -35,6 +35,10 @@ export interface AppContextType {
     setProvider: (p: Provider) => void;
     quantization: Quantization;
     setQuantization: (q: Quantization) => void;
+    encoderQuantization: Quantization;
+    setEncoderQuantization: (q: Quantization) => void;
+    decoderQuantization: Quantization;
+    setDecoderQuantization: (q: Quantization) => void;
     progress: number;
     userConfirmed: boolean;
     setUserConfirmed: (confirmed: boolean) => void;

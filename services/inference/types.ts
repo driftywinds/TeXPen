@@ -44,6 +44,8 @@ export interface InferenceOptions {
   device?: 'webgpu' | 'wasm';
   modelId?: string;
   quantization?: Quantization;
+  encoderQuantization?: Quantization;
+  decoderQuantization?: Quantization;
 }
 
 export interface BeamState {

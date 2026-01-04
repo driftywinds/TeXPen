@@ -18,6 +18,10 @@ export const SettingsMenu: React.FC = () => {
     const {
         quantization,
         setQuantization,
+        encoderQuantization,
+        setEncoderQuantization,
+        decoderQuantization,
+        setDecoderQuantization,
         provider,
         setProvider,
         showPreviewInput,
@@ -123,15 +127,28 @@ export const SettingsMenu: React.FC = () => {
 
                     <div className="h-px bg-black/5 dark:bg-white/5 mx-2" />
 
-                    {/* Quantization */}
+                    {/* Encoder Quantization */}
                     <div className="p-3">
                         <div className="flex items-center gap-1.5 mb-2">
-                            <div className="text-xs font-bold uppercase text-slate-400 dark:text-white/40">Quantization</div>
-                            <Tooltip content="Weight-only dynamic quantization. Reduces RAM usage but is generally slower and may slightly degrade output quality.">
+                            <div className="text-xs font-bold uppercase text-slate-400 dark:text-white/40">Encoder Quantization</div>
+                            <Tooltip content="Quantization for the Vision Transformer Encoder. Lower precision (int8/int4) is usually fine for the encoder and saves memory.">
                                 <HelpIcon />
                             </Tooltip>
                         </div>
-                        <QuantizationSelector value={quantization} onChange={setQuantization} />
+                        <QuantizationSelector value={encoderQuantization} onChange={setEncoderQuantization} />
+                    </div>
+
+                    <div className="h-px bg-black/5 dark:bg-white/5 mx-2" />
+
+                    {/* Decoder Quantization */}
+                    <div className="p-3">
+                        <div className="flex items-center gap-1.5 mb-2">
+                            <div className="text-xs font-bold uppercase text-slate-400 dark:text-white/40">Decoder Quantization</div>
+                            <Tooltip content="Quantization for the Text Decoder. The decoder is sensitive to precision; using 'fp16' or 'fp32' is recommended for best accuracy, while 'int8' saves significantly more memory.">
+                                <HelpIcon />
+                            </Tooltip>
+                        </div>
+                        <QuantizationSelector value={decoderQuantization} onChange={setDecoderQuantization} />
                     </div>
 
                     <div className="h-px bg-black/5 dark:bg-white/5 mx-2" />

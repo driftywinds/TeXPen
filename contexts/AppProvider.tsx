@@ -11,6 +11,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const { theme } = useThemeContext();
     const [provider, setProvider] = useState<Provider | null>(null);
     const [quantization, setQuantization] = useState<Quantization>('int8');
+    const [encoderQuantization, setEncoderQuantization] = useState<Quantization>('int8');
+    const [decoderQuantization, setDecoderQuantization] = useState<Quantization>('int8');
     const [customModelId, setCustomModelId] = useState<string>(MODEL_CONFIG.ID);
     const [activeTab, setActiveTab] = useState<'draw' | 'upload'>('draw');
 
@@ -49,7 +51,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isLoadedFromCache,
         isInitialized,
         isGenerationQueued,
-    } = useInkModel(theme, provider, quantization, customModelId);
+    } = useInkModel(theme, provider, quantization, encoderQuantization, decoderQuantization, customModelId);
 
     // Use the extracted tab state hook
     const {
@@ -223,6 +225,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setProvider,
         quantization,
         setQuantization,
+        encoderQuantization,
+        setEncoderQuantization,
+        decoderQuantization,
+        setDecoderQuantization,
         progress,
         userConfirmed,
         setUserConfirmed,

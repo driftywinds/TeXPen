@@ -31,16 +31,33 @@ const QUANT_MODEL_MAP: Record<Quantization, { encoder: string; decoder: string }
   },
 };
 
-export function getSessionOptions(device: string, quantization: Quantization = 'int8'): SessionConfig {
-  const { encoder, decoder } = QUANT_MODEL_MAP[quantization] || QUANT_MODEL_MAP.fp32;
+export interface QuantizationConfig {
+  encoder?: Quantization;
+  decoder?: Quantization;
+  overall?: Quantization;
+}
+
+export function getSessionOptions(
+  device: string,
+  quantization: QuantizationConfig | Quantization = 'int8'
+): SessionConfig {
+  const quant = typeof quantization === 'string'
+    ? { overall: quantization }
+    : quantization;
+
+  const encoderQuant = quant.encoder || quant.overall || 'int8';
+  const decoderQuant = quant.decoder || quant.overall || 'int8';
+
+  const encoderFile = (QUANT_MODEL_MAP[encoderQuant] || QUANT_MODEL_MAP.fp32).encoder;
+  const decoderFile = (QUANT_MODEL_MAP[decoderQuant] || QUANT_MODEL_MAP.fp32).decoder;
 
   return {
     device,
     // Force fp32 to prevent transformers.js from auto-selecting quantized models
     // which may not exist on the model repository
     dtype: 'fp32',
-    encoder_model_file_name: encoder,
-    decoder_model_file_name: decoder,
+    encoder_model_file_name: encoderFile,
+    decoder_model_file_name: decoderFile,
   };
 }
 
