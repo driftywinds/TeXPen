@@ -33,4 +33,14 @@ export const MODEL_CONFIG = {
     'decoder_model_merged_int8.onnx': '2590040b23aa50e76af8ad6c211edd34c1ed47439e31fd7b4ff935051b2efcac',
     'decoder_model_merged_int4.onnx': 'db0c9bfe85401afa7f9468eab5e00dd1b9f19b11f425530123fcac8c47fa9871',
   },
+  FILE_SIZES: {
+    'encoder_model.onnx': 344 * 1024 * 1024,
+    'encoder_model_fp16.onnx': 172 * 1024 * 1024,
+    'encoder_model_int8.onnx': 88300000, // ~88.3 MB
+    'encoder_model_int4.onnx': 47600000, // ~47.6 MB
+    'decoder_model.onnx': 909 * 1024 * 1024,
+    'decoder_model_merged.onnx': 909 * 1024 * 1024,
+    'decoder_model_merged_int8.onnx': 229 * 1024 * 1024,
+    'decoder_model_merged_int4.onnx': 176 * 1024 * 1024,
+  },
 } as const;

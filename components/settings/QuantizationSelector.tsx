@@ -6,6 +6,8 @@ import { Quantization, PerformanceProfile, QUANTIZATION_OPTIONS, PROFILE_OPTIONS
 import { Tooltip } from '../common/Tooltip';
 import { HelpIcon } from '../common/HelpIcon';
 
+import { MODEL_CONFIG } from '../../services/inference/config';
+
 export function QuantizationSelector() {
     const { theme } = useThemeContext();
     const {
@@ -67,6 +69,9 @@ export function QuantizationSelector() {
             ...provided,
             color: theme === 'dark' ? 'white' : 'black',
         }),
+        indicatorSeparator: () => ({
+            display: 'none',
+        }),
     });
 
     const handleProfileChange = (val: PerformanceProfile) => {
@@ -88,33 +93,54 @@ export function QuantizationSelector() {
     const selectedEncoder = QUANTIZATION_OPTIONS.find(q => q.value === encoderQuantization);
     const selectedDecoder = QUANTIZATION_OPTIONS.find(q => q.value === decoderQuantization);
 
+    // Calculate estimated size
+    const getEncoderSize = (q: Quantization) => {
+        switch (q) {
+            case 'fp32': return MODEL_CONFIG.FILE_SIZES['encoder_model.onnx'];
+            case 'fp16': return MODEL_CONFIG.FILE_SIZES['encoder_model_fp16.onnx'];
+            case 'int8': return MODEL_CONFIG.FILE_SIZES['encoder_model_int8.onnx'];
+            case 'int4': return MODEL_CONFIG.FILE_SIZES['encoder_model_int4.onnx'];
+            default: return 0;
+        }
+    };
+
+    const getDecoderSize = (q: Quantization) => {
+        switch (q) {
+            case 'fp32': return MODEL_CONFIG.FILE_SIZES['decoder_model_merged.onnx']; // Defaulting to merged
+            case 'fp16': return MODEL_CONFIG.FILE_SIZES['decoder_model_merged.onnx']; // FP16 uses FP32 decoder in this config map usually
+            case 'int8': return MODEL_CONFIG.FILE_SIZES['decoder_model_merged_int8.onnx'];
+            case 'int4': return MODEL_CONFIG.FILE_SIZES['decoder_model_merged_int4.onnx'];
+            default: return 0;
+        }
+    };
+
+    const totalSize = (
+        getEncoderSize(encoderQuantization) +
+        getDecoderSize(decoderQuantization)
+    );
+    const totalSizeMB = (totalSize / (1024 * 1024)).toFixed(0);
+
     return (
         <div className="flex flex-col gap-3">
             {/* Main Profile Selector */}
             <div>
-                <div className="flex items-center gap-1.5 mb-2">
-                    <div className="text-xs font-bold uppercase text-slate-400 dark:text-white/40">Performance Profile</div>
-                    <Tooltip content="Select a preset for the best balance of quality and speed.">
-                        <HelpIcon />
-                    </Tooltip>
+                <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5">
+                        <div className="text-xs font-bold uppercase text-slate-400 dark:text-white/40">Performance Profile</div>
+                        <Tooltip content="Select a preset for the best balance of quality and speed.">
+                            <HelpIcon />
+                        </Tooltip>
+                    </div>
                 </div>
                 <Select
                     value={selectedProfile}
                     onChange={(opt) => opt && handleProfileChange((opt as { value: PerformanceProfile }).value)}
                     options={PROFILE_OPTIONS.filter(p => {
                         if (provider === 'wasm') {
-                            // CPU (WASM): Hide 'fast' (FP16 encoder) and also likely 'high_quality' (FP32) if we want to force int8 default behavior preference
-                            // User said: "fp16 is very very slow on CPU, so it should not appear" -> This targets 'fast' profile (FP16 encoder) 
-                            // and 'high_quality' (FP32) is also slow but maybe acceptable?
-                            // User said "default to balanced".
-                            // Let's hide 'fast' (FP16/FP32). 
-                            // Should we hide 'high_quality' (FP32/FP32)? It's slow but compatible. 
-                            // Let's keep 'high_quality' as an option for "Full Quality" but discourage it?
-                            // Actually, user said "For CPU, default to "Balanced"... with options for "Lowest Memory"... and "Full Quality"".
-                            // So we KEEP 'high_quality' and 'balanced' and 'low_memory'. We HIDE 'fast' (FP16).
+                            // CPU (WASM): Hide 'fast' (FP16 encoder) as it's slow on CPU
                             return p.value !== 'fast';
                         } else {
-                            // GPU (WebGPU): Hide 'balanced' (Int8) and 'low_memory' (Int4)
+                            // GPU (WebGPU): Hide 'balanced' (Int8) and 'low_memory' (Int4) if they are not supported/performant
                             return p.value !== 'balanced' && p.value !== 'low_memory';
                         }
                     })}
@@ -132,6 +158,13 @@ export function QuantizationSelector() {
                         );
                     }}
                 />
+
+                {/* Size Estimate */}
+                <div className="flex justify-end mt-1">
+                    <span className="text-[10px] text-slate-400 dark:text-white/30">
+                        Est. Download: ~{totalSizeMB} MB
+                    </span>
+                </div>
             </div>
 
             {/* Advanced Toggle */}
@@ -161,7 +194,7 @@ export function QuantizationSelector() {
                     {/* Information Box */}
                     <div className="p-2 rounded bg-blue-500/10 border border-blue-500/20 text-[10px] text-blue-600 dark:text-blue-300">
                         <p className="font-semibold mb-0.5">Note:</p>
-                        The FP16 decoder has been removed as it is slower than FP32 with marginal memory savings on GPU, and significantly slower on CPU due to lack of native support.
+                        The FP16 decoder has been removed as it is slower than FP32.
                     </div>
 
                     {/* Encoder */}
@@ -172,14 +205,8 @@ export function QuantizationSelector() {
                             onChange={(opt) => opt && handleManualChange('encoder', (opt as { value: Quantization }).value)}
                             options={QUANTIZATION_OPTIONS.filter(q => {
                                 if (provider === 'wasm') {
-                                    // Hide FP16 for CPU
                                     return q.value !== 'fp16';
                                 } else {
-                                    // Hide Int8/Int4 for GPU (unless we really want to allow it in Advanced... user said "hide int8/int4 in GPU tab")
-                                    // "GPU tab" might refer to the main selector, but since this is "Advanced", maybe we allow it?
-                                    // The request "hide int8/int4 in GPU tab" likely refers to the "Provider" context.
-                                    // If I hide them here, the user can't select them even manually.
-                                    // Let's be strict as requested.
                                     return q.value !== 'int8' && q.value !== 'int4';
                                 }
                             })}
@@ -192,13 +219,11 @@ export function QuantizationSelector() {
                     <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-1.5">
                             <span className="text-[10px] font-bold uppercase text-slate-400 dark:text-white/40">Decoder</span>
-                            {/* Filter out FP16 from view if needed, or keeping it but it acts as FP32 internally */}
                         </div>
                         <Select
                             value={selectedDecoder}
-                            // Prevent selecting FP16 for decoder based on general removal AND provider specific logic
                             options={QUANTIZATION_OPTIONS.filter(o => {
-                                if (o.value === 'fp16') return false; // Global removal of FP16 decoder
+                                if (o.value === 'fp16') return false;
                                 if (provider === 'webgpu') {
                                     return o.value !== 'int8' && o.value !== 'int4';
                                 }
