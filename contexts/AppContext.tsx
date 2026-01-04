@@ -1,6 +1,6 @@
 // Imports cleaned up
 import { createContext, useContext } from 'react';
-import { ModelConfig, Candidate, HistoryItem } from '../types';
+import { ModelConfig, Candidate, HistoryItem, Quantization } from '../types';
 import { Stroke } from '../types/canvas';
 
 export type Provider = 'webgpu' | 'wasm';
@@ -33,6 +33,8 @@ export interface AppContextType {
     setTopP: (n: number) => void;
     provider: Provider;
     setProvider: (p: Provider) => void;
+    quantization: Quantization;
+    setQuantization: (q: Quantization) => void;
     progress: number;
     userConfirmed: boolean;
     setUserConfirmed: (confirmed: boolean) => void;

@@ -13,10 +13,10 @@ import {
   getGenerationConfig,
 } from "./config";
 import {
-  InferenceOptions,
   InferenceResult,
   VisionEncoderDecoderModel,
   SamplingOptions,
+  Quantization,
 } from "./types";
 
 export class InferenceEngine {
@@ -24,6 +24,7 @@ export class InferenceEngine {
   private tokenizer: PreTrainedTokenizer | null = null;
 
   private currentModelId: string = MODEL_CONFIG.ID;
+  private currentQuantization: Quantization = 'int8';
   private initPromise: Promise<void> | null = null;
   private isLoading: boolean = false;
 
@@ -86,7 +87,8 @@ export class InferenceEngine {
       if (
         (options.device &&
           this.model.config.device !== options.device) ||
-        (options.modelId && this.currentModelId !== options.modelId)
+        (options.modelId && this.currentModelId !== options.modelId) ||
+        (options.quantization && this.currentQuantization !== options.quantization)
       ) {
         // Internal reconfiguration: Dispose OLD model but do NOT increment generation.
 
@@ -129,15 +131,18 @@ export class InferenceEngine {
       if (options.modelId) {
         this.currentModelId = options.modelId;
       }
+      if (options.quantization) {
+        this.currentQuantization = options.quantization;
+      }
 
       if (onProgress)
         onProgress(
           `Loading model ${this.currentModelId} (${preferredDevice})...`
         );
 
-      console.log(`[InferenceEngine] Initializing with device: ${preferredDevice} (Available: ${webgpuAvailable}, Requested: ${options.device})`);
+      console.log(`[InferenceEngine] Initializing with device: ${preferredDevice} (Available: ${webgpuAvailable}, Requested: ${options.device}), Quantization: ${this.currentQuantization}`);
 
-      const sessionOptions = getSessionOptions(preferredDevice);
+      const sessionOptions = getSessionOptions(preferredDevice, this.currentQuantization);
 
       // Pre-download heavy model files using ModelLoader
       const { modelLoader } = await import("./ModelLoader");

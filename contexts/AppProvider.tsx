@@ -5,11 +5,12 @@ import { useThemeContext } from './ThemeContext';
 import { isWebGPUAvailable } from '../utils/env';
 import { MODEL_CONFIG } from '../services/inference/config';
 import { useTabState } from '../hooks/useTabState';
-import { HistoryItem } from '../types';
+import { HistoryItem, Quantization } from '../types';
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { theme } = useThemeContext();
     const [provider, setProvider] = useState<Provider | null>(null);
+    const [quantization, setQuantization] = useState<Quantization>('int8');
     const [customModelId, setCustomModelId] = useState<string>(MODEL_CONFIG.ID);
     const [activeTab, setActiveTab] = useState<'draw' | 'upload'>('draw');
 
@@ -48,7 +49,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isLoadedFromCache,
         isInitialized,
         isGenerationQueued,
-    } = useInkModel(theme, provider, customModelId);
+    } = useInkModel(theme, provider, quantization, customModelId);
 
     // Use the extracted tab state hook
     const {
@@ -220,6 +221,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setTopP,
         provider: provider || 'wasm',
         setProvider,
+        quantization,
+        setQuantization,
         progress,
         userConfirmed,
         setUserConfirmed,

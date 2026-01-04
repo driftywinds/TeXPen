@@ -3,6 +3,7 @@ import { useAppContext } from '../../contexts/AppContext';
 import { useThemeContext } from '../../contexts/ThemeContext';
 import { useHistoryContext } from '../../contexts/HistoryContext';
 import { ProviderSelector } from './ProviderSelector';
+import { QuantizationSelector } from './QuantizationSelector';
 import { useVerifyDownloads } from '../../hooks/useVerifyDownloads';
 
 import { MODEL_CONFIG } from '../../services/inference/config';
@@ -15,7 +16,8 @@ export const SettingsMenu: React.FC = () => {
     const menuRef = useRef<HTMLDivElement>(null);
     const modelIdInputRef = useRef<HTMLInputElement>(null);
     const {
-        // quantization, // usage removed
+        quantization,
+        setQuantization,
         provider,
         setProvider,
         showPreviewInput,
@@ -117,6 +119,19 @@ export const SettingsMenu: React.FC = () => {
                     <div className="p-3">
                         <div className="text-xs font-bold uppercase text-slate-400 dark:text-white/40 mb-2">Provider</div>
                         <ProviderSelector value={provider} onChange={setProvider} />
+                    </div>
+
+                    <div className="h-px bg-black/5 dark:bg-white/5 mx-2" />
+
+                    {/* Quantization */}
+                    <div className="p-3">
+                        <div className="flex items-center gap-1.5 mb-2">
+                            <div className="text-xs font-bold uppercase text-slate-400 dark:text-white/40">Quantization</div>
+                            <Tooltip content="Weight-only dynamic quantization. Reduces RAM usage but is generally slower and may slightly degrade output quality.">
+                                <HelpIcon />
+                            </Tooltip>
+                        </div>
+                        <QuantizationSelector value={quantization} onChange={setQuantization} />
                     </div>
 
                     <div className="h-px bg-black/5 dark:bg-white/5 mx-2" />

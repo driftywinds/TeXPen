@@ -1,17 +1,12 @@
 import React from 'react';
 import Select, { StylesConfig } from 'react-select';
 import { useThemeContext } from '../../contexts/ThemeContext';
+import { Quantization, QUANTIZATION_OPTIONS as options } from '../../services/inference/types';
 
 interface QuantizationSelectorProps {
-    value: string;
-    onChange: (value: string) => void;
+    value: Quantization;
+    onChange: (value: Quantization) => void;
 }
-
-// Quantization has been removed from the codebase.
-// This component is kept for backwards compatibility but only shows FP32 option.
-const options = [
-    { value: 'fp32', label: 'FP32 (Default)' },
-];
 
 export function QuantizationSelector({ value, onChange }: QuantizationSelectorProps) {
     const { theme } = useThemeContext();

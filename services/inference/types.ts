@@ -1,5 +1,13 @@
 import { PreTrainedModel, Tensor, PretrainedConfig } from '@huggingface/transformers';
 
+export type Quantization = 'fp32' | 'fp16' | 'int8' | 'int4';
+export const QUANTIZATION_OPTIONS: { value: Quantization; label: string }[] = [
+  { value: 'fp32', label: 'FP32 (Highest memory, highest quality, fastest)' },
+  { value: 'fp16', label: 'FP16 (Lower memory, quality loss possible, fast)' },
+  { value: 'int8', label: 'Int8 (Lower memory, quality loss possible)' },
+  { value: 'int4', label: 'Int4 (Lowest memory, quality loss possible)' },
+];
+
 export interface InferenceConfig {
   encoderModelUrl: string;
   decoderModelUrl: string;
@@ -35,6 +43,7 @@ export interface SamplingOptions {
 export interface InferenceOptions {
   device?: 'webgpu' | 'wasm';
   modelId?: string;
+  quantization?: Quantization;
 }
 
 export interface BeamState {
