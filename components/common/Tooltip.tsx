@@ -70,24 +70,15 @@ export const Tooltip: React.FC<TooltipProps> = ({ content, children, width = 'w-
         if (!isVisible) return;
 
         const handleClickOutside = (event: MouseEvent) => {
-            // Check if click is inside trigger OR inside the portal tooltip (we can't easily check portal ref here without more plumbing)
-            // But we put `onClick={(e) => e.stopPropagation()}` on the tooltip div, so clicks inside it shouldn't bubble to document? 
-            // Wait, document listener captures everything.
-            // We need a ref for the tooltip content if we want to be precise, or just rely on bubbling.
-
             if (triggerRef.current && !triggerRef.current.contains(event.target as Node)) {
-                // Logic hole: clicking inside the portal tooltip will close it because it's not in triggerRef.
-                // We need to check if the target is inside the tooltip.
-                // Since the tooltip is high up in the DOM (body), we can't easily check containment without a ref to it.
-                // Let's rely on the fact that if we click *inside* the tooltip, we stop propagation?
-                // No, verify: document listener is on 'mousedown'. 
                 setIsVisible(false);
             }
         };
 
-        // We can add a specialized listener or checking logic
-        // Easier: Just add a logic to ignoring clicks if they happen on a generic tooltip container class?
-        // Or better: Use a ref for the portal content.
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
     }, [isVisible]);
 
     const handleMouseEnter = () => setIsVisible(true);
