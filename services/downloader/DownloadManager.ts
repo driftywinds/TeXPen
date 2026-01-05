@@ -64,6 +64,12 @@ export class DownloadManager {
     return caches.open(CACHE_NAME);
   }
 
+  public async isCached(url: string): Promise<boolean> {
+    const cache = await this.getCache();
+    const match = await cache.match(url);
+    return !!match;
+  }
+
   private extractFilename(url: string): string {
     return url.split('/').pop() || 'unknown';
   }
