@@ -7,6 +7,7 @@ import { Tooltip } from '../common/Tooltip';
 import { HelpIcon } from '../common/HelpIcon';
 
 import { MODEL_CONFIG } from '../../services/inference/config';
+import { downloadManager } from '../../services/downloader/DownloadManager';
 
 export function QuantizationSelector() {
     const { theme } = useThemeContext();
@@ -18,7 +19,6 @@ export function QuantizationSelector() {
         decoderQuantization,
         setDecoderQuantization,
 
-        setQuantization,
         provider,
     } = useAppContext();
 
@@ -80,45 +80,64 @@ export function QuantizationSelector() {
     };
 
     const handleManualChange = (type: 'encoder' | 'decoder', val: Quantization) => {
-        if (type === 'encoder') setEncoderQuantization(val);
-        if (type === 'decoder') setDecoderQuantization(val);
-
-        // Changing simple quantization for legacy compatibility if needed, though mostly unused now
-        if (type === 'encoder') setQuantization(val);
-
-        setPerformanceProfile('custom');
+        if (type === 'encoder') {
+            setEncoderQuantization(val);
+        }
+        if (type === 'decoder') {
+            setDecoderQuantization(val);
+        }
+        // AppProvider now automatically switches to 'custom' profile when these are called
     };
 
     const selectedProfile = PROFILE_OPTIONS.find(p => p.value === performanceProfile);
     const selectedEncoder = QUANTIZATION_OPTIONS.find(q => q.value === encoderQuantization);
     const selectedDecoder = QUANTIZATION_OPTIONS.find(q => q.value === decoderQuantization);
 
-    // Calculate estimated size
-    const getEncoderSize = (q: Quantization) => {
+
+
+    const getEncoderFilename = (q: Quantization) => {
         switch (q) {
-            case 'fp32': return MODEL_CONFIG.FILE_SIZES['encoder_model.onnx'];
-            case 'fp16': return MODEL_CONFIG.FILE_SIZES['encoder_model_fp16.onnx'];
-            case 'int8': return MODEL_CONFIG.FILE_SIZES['encoder_model_int8.onnx'];
-            case 'int4': return MODEL_CONFIG.FILE_SIZES['encoder_model_int4.onnx'];
-            default: return 0;
+            case 'fp32': return 'encoder_model.onnx';
+            case 'fp16': return 'encoder_model_fp16.onnx';
+            case 'int8': return 'encoder_model_int8.onnx';
+            case 'int4': return 'encoder_model_int4.onnx';
+            default: return null;
         }
     };
 
-    const getDecoderSize = (q: Quantization) => {
+    const getDecoderFilename = (q: Quantization) => {
         switch (q) {
-            case 'fp32': return MODEL_CONFIG.FILE_SIZES['decoder_model_merged.onnx']; // Defaulting to merged
-            case 'fp16': return MODEL_CONFIG.FILE_SIZES['decoder_model_merged.onnx']; // FP16 uses FP32 decoder in this config map usually
-            case 'int8': return MODEL_CONFIG.FILE_SIZES['decoder_model_merged_int8.onnx'];
-            case 'int4': return MODEL_CONFIG.FILE_SIZES['decoder_model_merged_int4.onnx'];
-            default: return 0;
+            case 'fp32': return 'decoder_model_merged.onnx';
+            case 'fp16': return 'decoder_model_merged.onnx';
+            case 'int8': return 'decoder_model_merged_int8.onnx';
+            case 'int4': return 'decoder_model_merged_int4.onnx';
+            default: return null;
         }
     };
 
-    const totalSize = (
-        getEncoderSize(encoderQuantization) +
-        getDecoderSize(decoderQuantization)
-    );
-    const totalSizeMB = (totalSize / (1024 * 1024)).toFixed(0);
+    const [remainingSizeBytes, setRemainingSizeBytes] = useState<number | null>(null);
+
+    React.useEffect(() => {
+        const checkCache = async () => {
+            const encoderFile = getEncoderFilename(encoderQuantization);
+            const decoderFile = getDecoderFilename(decoderQuantization);
+
+            let needed = 0;
+            const files = [];
+            if (encoderFile) files.push(encoderFile);
+            if (decoderFile) files.push(decoderFile);
+
+            for (const file of files) {
+                const url = `https://huggingface.co/${MODEL_CONFIG.ID}/resolve/main/onnx/${file}`;
+                const isCached = await downloadManager.isCached(url);
+                if (!isCached) {
+                    needed += MODEL_CONFIG.FILE_SIZES[file as keyof typeof MODEL_CONFIG.FILE_SIZES] || 0;
+                }
+            }
+            setRemainingSizeBytes(needed);
+        };
+        checkCache();
+    }, [encoderQuantization, decoderQuantization]);
 
     return (
         <div className="flex flex-col gap-3">
@@ -162,7 +181,15 @@ export function QuantizationSelector() {
                 {/* Size Estimate */}
                 <div className="flex justify-end mt-1">
                     <span className="text-[10px] text-slate-400 dark:text-white/30">
-                        Est. Download: ~{totalSizeMB} MB
+                        {remainingSizeBytes !== null ? (
+                            remainingSizeBytes === 0 ? (
+                                <span className="text-green-500">Fully Downloaded</span>
+                            ) : (
+                                <>Est. Download: ~{(remainingSizeBytes / (1024 * 1024)).toFixed(0)} MB</>
+                            )
+                        ) : (
+                            <>Calculating...</>
+                        )}
                     </span>
                 </div>
             </div>

@@ -32,11 +32,18 @@ export const useVerifyDownloads = () => {
 
         const corrupted = await modelLoader.validateModelFiles(modelId, sessionOptions);
 
+
         if (corrupted.length > 0) {
+          const totalSize = corrupted.reduce((acc, url) => {
+            const filename = url.split('/').pop() as keyof typeof MODEL_CONFIG.FILE_SIZES;
+            return acc + (MODEL_CONFIG.FILE_SIZES[filename] || 0);
+          }, 0);
+          const totalSizeMB = (totalSize / (1024 * 1024)).toFixed(0);
+
           toast(null);
           openDialog({
             title: 'Missing or Corrupted Files',
-            message: `Found ${corrupted.length} file(s) that need to be downloaded. Fix them now?`,
+            message: `Found ${corrupted.length} file(s) (~${totalSizeMB} MB) that need to be downloaded. Fix them now?`,
             confirmText: 'Download',
             isDangerous: false,
             onConfirm: async () => {
